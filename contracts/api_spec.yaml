@@ -1,0 +1,214 @@
+openapi: 3.0.0
+info:
+  title: Hyperion AI Security Gateway API
+  version: 1.0.0
+  description: API for AI security gateway that detects and prevents data leakage
+servers:
+  - url: http://localhost:8000
+    description: Development server
+paths:
+  /api/health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/chat:
+    post:
+      summary: Process chat message through security gateway
+      description: Receives user message, applies security checks, returns safe response
+      operationId: processChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successfully processed message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/incidents:
+    get:
+      summary: Get security incidents
+      description: Returns paginated list of security incidents
+      operationId: getIncidents
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Maximum number of incidents to return
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of incidents to skip
+      responses:
+        '200':
+          description: Paginated list of incidents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentsResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-10-13T10:30:00Z
+        version:
+          type: string
+          example: 1.0.0
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: User message to be processed through security gateway
+          example: Test message with email test@example.com
+        user_id:
+          type: string
+          description: Optional user identifier for tracking
+          example: user_123
+        session_id:
+          type: string
+          description: Optional session identifier
+          example: session_abc
+    ChatResponse:
+      type: object
+      properties:
+        response:
+          type: string
+          description: AI response after security processing
+          example: AI response after processing
+        original_message:
+          type: string
+          description: Original user message (for logging/audit only - not returned to user in production)
+          example: Original message with PII
+        security_action:
+          type: string
+          enum: [allow, mask, block, warn]
+          example: mask
+        explanation:
+          type: string
+          description: Explanation of what security action was taken and why
+          example: Detected PII - masked for privacy
+        incident_id:
+          type: string
+          description: Unique identifier for the security incident (if any)
+          example: inc_abc123
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-10-13T10:30:00Z
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: Invalid request format
+        error_code:
+          type: string
+          description: Machine-readable error code
+          example: VALIDATION_ERROR
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-10-13T10:30:00Z
+    IncidentsResponse:
+      type: object
+      properties:
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+        total:
+          type: integer
+          description: Total number of incidents
+          example: 25
+        limit:
+          type: integer
+          description: Limit used for this query
+          example: 50
+        offset:
+          type: integer
+          description: Offset used for this query
+          example: 0
+    Incident:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique incident identifier
+          example: inc_abc123
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-10-13T10:30:00Z
+        user_id:
+          type: string
+          description: User associated with incident (if available)
+          example: user_123
+        action_taken:
+          type: string
+          enum: [allow, mask, block, warn]
+          example: mask
+        explanation:
+          type: string
+          description: Explanation of security action
+          example: Detected email address - masked for privacy
+        data_types_detected:
+          type: array
+          items:
+            type: string
+          example: [email, phone_number]
+        # Note: Actual sensitive data is NOT stored - only metadata about what was detected
