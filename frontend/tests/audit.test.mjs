@@ -9,12 +9,12 @@ const filtersSource = readFileSync(new URL('../src/workspace/filters.ts', import
 const code = transformSync(filtersSource, { loader: 'ts', format: 'esm' }).code
 const { filterTraffic, trafficBuckets, findingIsNew } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
 
-test('all six command center page destinations and subtitles are defined', () => {
+test('all seven command center page destinations and subtitles are defined', () => {
   const tabsMatch = source.match(/const tabs = (\[\[.*?\]\])/s)
   assert.ok(tabsMatch, 'tabs constant must be defined')
   const tabs = JSON.parse(tabsMatch[1].replace(/'/g, '"'))
-  assert.equal(tabs.length, 6)
-  const expectedKeys = ['', 'inventory', 'traffic', 'alerts', 'risk', 'investigation']
+  assert.equal(tabs.length, 7)
+  const expectedKeys = ['', 'inventory', 'traffic', 'alerts', 'risk', 'flow', 'investigation']
   assert.deepEqual(tabs.map(t => t[0]), expectedKeys)
   assert.deepEqual(tabs.map(t => t[1]), [
     'Overview',
@@ -22,12 +22,15 @@ test('all six command center page destinations and subtitles are defined', () =>
     'Traffic activity',
     'Threat findings',
     'Risk intelligence',
+    'Execution flow',
     'Investigation'
   ])
 
   for (const key of expectedKeys) {
     assert.ok(source.includes(`subtitles[section]`) || source.includes(`subtitles:`), 'subtitles mapping must be present')
   }
+  assert.ok(source.includes('Hierarchical Topology'), 'hierarchical topology mode must be supported')
+  assert.ok(source.includes('pipeline-figure') && source.includes('Execution flow'), 'execution flow figure must be present')
 })
 
 test('inventory sorting orders by risk, activity, and path', () => {

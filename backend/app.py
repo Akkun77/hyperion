@@ -3,7 +3,7 @@ import re
 import json
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional
 from collections import defaultdict, deque
 from threading import Lock
 
@@ -699,6 +699,426 @@ async def api_risk_scores(skip: int = 0, limit: int = 100):
             "timestamp": item.last_seen
         })
     return risk_scores
+
+
+def infer_service_domain(endpoint: str) -> dict:
+    path = endpoint.strip("/")
+    parts = path.split("/")
+    domain_key = "core-services"
+    domain_name = "Core Services"
+    description = "Core application service endpoints"
+
+    if len(parts) >= 3 and parts[0] == "api":
+        seg = parts[2].lower()
+        if seg in ("users", "user"):
+            domain_key = "identity-users"
+            domain_name = "Identity & User Service"
+            description = "User accounts, authentication profiles and KYC state"
+        elif seg in ("payments", "payment", "accounts", "billing"):
+            domain_key = "financial-payments"
+            domain_name = "Payments & Settlement Gateway"
+            description = "Wire transactions, payment ledgers and account balances"
+        elif seg in ("admin", "management", "export"):
+            domain_key = "governance-admin"
+            domain_name = "Administrative & Governance Service"
+            description = "Privileged internal administrative and export operations"
+        elif seg in ("debug", "system", "health", "metrics"):
+            domain_key = "core-infra"
+            domain_name = "Infrastructure & System Runtime"
+            description = "Server kernel, environment configurations and runtime diagnostics"
+        else:
+            domain_key = f"{seg}-service"
+            domain_name = f"{seg.capitalize()} Service"
+            description = f"Endpoints managing {seg} domain resources"
+    elif "users" in path:
+        domain_key = "identity-users"
+        domain_name = "Identity & User Service"
+        description = "User accounts, authentication profiles and KYC state"
+    elif "payments" in path or "balance" in path:
+        domain_key = "financial-payments"
+        domain_name = "Payments & Settlement Gateway"
+        description = "Wire transactions, payment ledgers and account balances"
+    elif "admin" in path:
+        domain_key = "governance-admin"
+        domain_name = "Administrative & Governance Service"
+        description = "Privileged internal administrative and export operations"
+    elif "debug" in path:
+        domain_key = "core-infra"
+        domain_name = "Infrastructure & System Runtime"
+        description = "Server kernel, environment configurations and runtime diagnostics"
+
+    return {"id": domain_key, "name": domain_name, "description": description}
+
+
+@app.get("/api/risk-hierarchy")
+async def api_risk_hierarchy():
+    inventory = get_inventory(limit=500)
+    alerts = get_alerts(limit=500)
+    traffic_logs = get_traffic_logs(limit=100)
+    traffic_by_id = {t.id: t for t in traffic_logs}
+
+    alerts_by_endpoint = defaultdict(list)
+    for a in alerts:
+        alerts_by_endpoint[a.endpoint].append(a)
+
+    services_map = {}
+    for item in inventory:
+        domain_info = infer_service_domain(item.endpoint)
+        sid = domain_info["id"]
+        if sid not in services_map:
+            services_map[sid] = {
+                "id": sid,
+                "name": domain_info["name"],
+                "description": domain_info["description"],
+                "endpoints": [],
+            }
+        
+        try:
+            reasons = json.loads(item.risk_reasons) if item.risk_reasons else []
+        except (TypeError, json.JSONDecodeError):
+            reasons = [item.risk_reasons] if item.risk_reasons else []
+
+        item_alerts = alerts_by_endpoint.get(item.endpoint, [])
+        formatted_alerts = []
+        evidence_events = []
+        for al in item_alerts:
+            formatted_alerts.append({
+                "alert_id": str(al.id),
+                "alert_type": al.alert_type.lower(),
+                "severity": al.severity.upper(),
+                "description": al.details,
+                "timestamp": al.timestamp,
+                "related_event_id": al.related_event_id,
+            })
+            if al.related_event_id and al.related_event_id in traffic_by_id:
+                t = traffic_by_id[al.related_event_id]
+                evidence_events.append({
+                    "id": t.id,
+                    "method": t.method,
+                    "endpoint": t.endpoint,
+                    "caller_ip": t.caller_ip,
+                    "user_id": t.token_user_id,
+                    "target_resource_id": t.target_resource_id,
+                    "status_code": t.status_code,
+                    "timestamp": t.timestamp,
+                })
+
+        services_map[sid]["endpoints"].append({
+            "id": item.id,
+            "method": item.method,
+            "endpoint": item.endpoint,
+            "risk_score": item.risk_score,
+            "severity": item.severity,
+            "is_shadow": item.is_shadow,
+            "auth_type": item.auth_type,
+            "contains_pii": item.contains_pii,
+            "total_calls": item.total_calls,
+            "last_seen": item.last_seen,
+            "risk_reasons": reasons,
+            "alerts": formatted_alerts,
+            "evidence_events": evidence_events,
+        })
+
+    services_list = []
+    total_endpoints = len(inventory)
+    total_shadow = sum(1 for it in inventory if it.is_shadow)
+    total_alerts_count = len(alerts)
+
+    for sid, sdata in services_map.items():
+        endpoints = sdata["endpoints"]
+        scores = [ep["risk_score"] for ep in endpoints]
+        avg_score = round(sum(scores) / len(scores), 1) if scores else 0
+        max_score = max(scores) if scores else 0
+        service_alerts = sum(len(ep["alerts"]) for ep in endpoints)
+        shadow_count = sum(1 for ep in endpoints if ep["is_shadow"])
+        
+        weighted_score = int(round(0.6 * max_score + 0.4 * avg_score)) if scores else 0
+        weighted_score = max(0, min(100, weighted_score))
+
+        if weighted_score <= 30:
+            sev = "LOW"
+        elif weighted_score <= 60:
+            sev = "MEDIUM"
+        elif weighted_score <= 85:
+            sev = "HIGH"
+        else:
+            sev = "CRITICAL"
+
+        drivers = []
+        if shadow_count > 0:
+            drivers.append(f"{shadow_count} shadow / uncataloged endpoint(s) discovered")
+        if service_alerts > 0:
+            drivers.append(f"{service_alerts} runtime security alert(s) logged")
+        if any(ep["contains_pii"] for ep in endpoints):
+            drivers.append("Processes customer personal identifiable data (PII)")
+        if any(ep["auth_type"] == "None" for ep in endpoints):
+            drivers.append("Contains unauthenticated public route(s)")
+        if not drivers:
+            drivers.append("Documented service routes with verified baseline controls")
+
+        services_list.append({
+            "id": sid,
+            "name": sdata["name"],
+            "description": sdata["description"],
+            "risk_score": weighted_score,
+            "severity": sev,
+            "avg_risk_score": avg_score,
+            "max_risk_score": max_score,
+            "endpoint_count": len(endpoints),
+            "shadow_count": shadow_count,
+            "alert_count": service_alerts,
+            "drivers": drivers,
+            "endpoints": sorted(endpoints, key=lambda x: x["risk_score"], reverse=True),
+        })
+
+    services_list.sort(key=lambda s: s["risk_score"], reverse=True)
+
+    platform_scores = [s["risk_score"] for s in services_list]
+    platform_avg = round(sum(platform_scores) / len(platform_scores), 1) if platform_scores else 0
+    platform_max = max(platform_scores) if platform_scores else 0
+    platform_risk = int(round(0.5 * platform_max + 0.5 * platform_avg)) if platform_scores else 0
+    platform_risk = max(0, min(100, platform_risk))
+
+    if platform_risk <= 30:
+        p_sev = "LOW"
+    elif platform_risk <= 60:
+        p_sev = "MEDIUM"
+    elif platform_risk <= 85:
+        p_sev = "HIGH"
+    else:
+        p_sev = "CRITICAL"
+
+    platform_factors = []
+    if total_shadow > 0:
+        platform_factors.append(f"{total_shadow} shadow APIs uncataloged in OpenAPI spec")
+    if total_alerts_count > 0:
+        platform_factors.append(f"{total_alerts_count} active security anomalies logged across environment")
+    if services_list:
+        platform_factors.append(f"Highest exposure service: '{services_list[0]['name']}' ({services_list[0]['risk_score']}/100)")
+    if not platform_factors:
+        platform_factors.append("Clean operational posture across all registered service domains")
+
+    return {
+        "platform": {
+            "name": "Hyperion Gateway Security Fabric",
+            "organization": "Corporate Banking & Payments Infrastructure",
+            "risk_score": platform_risk,
+            "severity": p_sev,
+            "total_services": len(services_list),
+            "total_endpoints": total_endpoints,
+            "total_shadow_endpoints": total_shadow,
+            "active_alerts_count": total_alerts_count,
+            "factors": platform_factors,
+            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        "services": services_list,
+    }
+
+
+@app.get("/api/execution-flow")
+async def api_execution_flow(alert_id: Optional[str] = None, event_id: Optional[int] = None):
+    alerts = get_alerts(limit=50)
+    traffic_logs = get_traffic_logs(limit=50)
+    inventory = get_inventory(limit=100)
+    inv_by_endpoint = {f"{item.method}:{item.endpoint}": item for item in inventory}
+
+    target_alert = None
+    target_traffic = None
+
+    if alert_id:
+        target_alert = next((a for a in alerts if str(a.id) == str(alert_id)), None)
+        if target_alert and target_alert.related_event_id:
+            target_traffic = get_traffic_log_by_id(target_alert.related_event_id)
+    elif event_id:
+        target_traffic = get_traffic_log_by_id(event_id)
+        if target_traffic:
+            target_alert = next((a for a in alerts if a.related_event_id == target_traffic.id), None)
+    
+    if not target_alert and not target_traffic:
+        for a in alerts:
+            if a.related_event_id:
+                target_alert = a
+                target_traffic = get_traffic_log_by_id(a.related_event_id)
+                if target_traffic:
+                    break
+        if not target_traffic and traffic_logs:
+            target_traffic = traffic_logs[0]
+            target_alert = next((a for a in alerts if a.related_event_id == target_traffic.id), None)
+
+    available_events = []
+    seen_ids = set()
+    for a in alerts:
+        label = f"Alert #{a.id} — {a.alert_type.upper()} ({a.endpoint})"
+        available_events.append({
+            "type": "alert",
+            "id": str(a.id),
+            "event_id": a.related_event_id,
+            "label": label,
+            "alert_type": a.alert_type.lower(),
+            "severity": a.severity.upper(),
+            "timestamp": a.timestamp,
+        })
+        if a.related_event_id:
+            seen_ids.add(a.related_event_id)
+
+    for t in traffic_logs[:10]:
+        if t.id not in seen_ids:
+            available_events.append({
+                "type": "traffic",
+                "id": str(t.id),
+                "event_id": t.id,
+                "label": f"Traffic #{t.id} — {t.method} {t.endpoint} ({t.status_code})",
+                "alert_type": "traffic",
+                "severity": "INFO" if t.status_code < 400 else "WARN",
+                "timestamp": t.timestamp,
+            })
+
+    if not target_traffic and not target_alert:
+        return {
+            "has_data": False,
+            "message": "No traffic or alert telemetry observed yet. Run demo simulation to generate execution trace.",
+            "available_events": [],
+            "stages": []
+        }
+
+    method = target_traffic.method if target_traffic else "GET"
+    endpoint = target_traffic.endpoint if target_traffic else (target_alert.endpoint if target_alert else "/api/v1/unknown")
+    caller_ip = target_traffic.caller_ip if target_traffic else (target_alert.caller_ip if target_alert else "Unknown")
+    user_id = target_traffic.token_user_id if target_traffic else "None"
+    target_res = target_traffic.target_resource_id if target_traffic else "None"
+    status_code = target_traffic.status_code if target_traffic else (200 if target_alert else 0)
+    auth_type = target_traffic.auth_type if target_traffic else "Bearer Token"
+    timestamp = target_traffic.timestamp if target_traffic else (target_alert.timestamp if target_alert else datetime.now(timezone.utc).isoformat())
+
+    inv_item = inv_by_endpoint.get(f"{method}:{endpoint}")
+    is_shadow = inv_item.is_shadow if inv_item else (endpoint in ("/api/v2/debug", "/api/v1/admin/export", "/api/v1/admin/users"))
+    domain_info = infer_service_domain(endpoint)
+
+    detector_name = "Hyperion Passive Inspector"
+    rule_desc = "Traffic inspected against OpenAPI catalog and baseline authorization policy"
+    alert_name = target_alert.alert_type.upper() if target_alert else "NORMAL_TRAFFIC"
+    alert_sev = target_alert.severity.upper() if target_alert else "BENIGN"
+
+    if target_alert:
+        at = target_alert.alert_type.lower()
+        if "bola" in at:
+            detector_name = "BOLA Ownership Detector"
+            rule_desc = f"Cross-user access: Token user '{user_id}' requested target resource '{target_res}' and succeeded (HTTP {status_code})"
+        elif "token" in at or "replay" in at:
+            detector_name = "Token Misuse & IP Diversity Detector"
+            rule_desc = f"Single session credential observed concurrently across multiple remote caller IPs"
+        elif "scraping" in at:
+            detector_name = "Burst Scraping & Rate Heuristic"
+            rule_desc = f"Request volume from caller IP '{caller_ip}' exceeded rolling window rate threshold"
+        elif "shadow" in at or is_shadow:
+            detector_name = "Shadow API Discovery Analyzer"
+            rule_desc = f"Endpoint '{endpoint}' actively received traffic while absent from managed OpenAPI contract"
+
+    stages = [
+        {
+            "step": 1,
+            "id": "incoming-request",
+            "name": "Incoming Edge Request",
+            "status": "observed",
+            "summary": f"{method} {endpoint} from {caller_ip}",
+            "meta": {
+                "Method": method,
+                "Caller IP": caller_ip,
+                "Identity": user_id or "Not supplied",
+                "Target Resource": target_res or "Global / Static",
+                "Auth Signal": auth_type,
+                "Timestamp": timestamp,
+            }
+        },
+        {
+            "step": 2,
+            "id": "endpoint-catalog",
+            "name": "API Endpoint Resolution",
+            "status": "warning" if is_shadow else "verified",
+            "summary": f"{domain_info['name']} · {'SHADOW / UNMANAGED' if is_shadow else 'Managed Catalog'}",
+            "meta": {
+                "Normalized Route": endpoint,
+                "Classification": "Shadow API" if is_shadow else "Managed Route",
+                "Service Domain": domain_info["name"],
+                "Documented in Spec": not is_shadow,
+                "Contains PII": inv_item.contains_pii if inv_item else False,
+            }
+        },
+        {
+            "step": 3,
+            "id": "traffic-audit",
+            "name": "Traffic Log Persistence",
+            "status": "persisted",
+            "summary": f"Audit record #{target_traffic.id if target_traffic else 'N/A'} (HTTP {status_code})",
+            "meta": {
+                "Log ID": f"#{target_traffic.id}" if target_traffic else "Buffered",
+                "HTTP Status": status_code,
+                "Payload Bytes": target_traffic.payload_size_bytes if target_traffic else 0,
+                "Storage Engine": "SQLite (traffic_logs)",
+            }
+        },
+        {
+            "step": 4,
+            "id": "detector-eval",
+            "name": "Security Engine Evaluation",
+            "status": "triggered" if target_alert else "cleared",
+            "summary": f"{detector_name} · {'TRIGGERED' if target_alert else 'Normal Activity'}",
+            "meta": {
+                "Detector": detector_name,
+                "Decision Rule": rule_desc,
+                "Engine Façade": "Hyperion Security Engine (v1.0)",
+                "Action Taken": "Alert Generated" if target_alert else "Logged & Allowed",
+            }
+        },
+        {
+            "step": 5,
+            "id": "alert-dispatch",
+            "name": "Alert Creation & Classification",
+            "status": alert_sev.lower() if target_alert else "benign",
+            "summary": f"{alert_name} [{alert_sev}] #{target_alert.id if target_alert else 'NONE'}",
+            "meta": {
+                "Alert ID": f"#{target_alert.id}" if target_alert else "None",
+                "Threat Type": alert_name,
+                "Severity": alert_sev,
+                "Details": target_alert.details if target_alert else "No anomaly detected",
+            }
+        },
+        {
+            "step": 6,
+            "id": "risk-recalculation",
+            "name": "Risk Intelligence Update",
+            "status": "updated",
+            "summary": f"Score {inv_item.risk_score if inv_item else 40}/100 ({inv_item.severity if inv_item else 'MEDIUM'})",
+            "meta": {
+                "Endpoint Score": f"{inv_item.risk_score if inv_item else 40} / 100",
+                "Exposure Severity": inv_item.severity if inv_item else "MEDIUM",
+                "Primary Driver": (inv_item.risk_reasons if inv_item else "Baseline exposure"),
+                "Parent Domain": domain_info["name"],
+            }
+        },
+        {
+            "step": 7,
+            "id": "evidence-link",
+            "name": "Forensic Evidence Trace",
+            "status": "linked" if (target_alert and target_traffic) else "unlinked",
+            "summary": f"Finding #{target_alert.id if target_alert else 'N/A'} ↔ Traffic Event #{target_traffic.id if target_traffic else 'N/A'}",
+            "meta": {
+                "Linked Traffic ID": target_traffic.id if target_traffic else None,
+                "Linked Alert ID": str(target_alert.id) if target_alert else None,
+                "Traceability": "100% Persisted Evidence Link",
+                "Investigation URL": f"/command-center/investigation?alert={target_alert.id}" if target_alert else (f"/command-center/investigation?event={target_traffic.id}" if target_traffic else "/command-center/investigation"),
+            }
+        }
+    ]
+
+    return {
+        "has_data": True,
+        "selected_alert_id": str(target_alert.id) if target_alert else None,
+        "selected_event_id": target_traffic.id if target_traffic else None,
+        "available_events": available_events,
+        "stages": stages,
+    }
+
 
 # Serve Frontend Static Dashboard
 # =====================================================================

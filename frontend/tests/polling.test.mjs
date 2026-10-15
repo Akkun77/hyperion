@@ -10,7 +10,7 @@ function mount({hidden=false, immediate=false}={}) {
  let stateIndex=0,next=1,fail=false,calls=0
  const api=new Proxy({}, {get:()=> (...args)=>{
    calls++; const signal=args.at(-1); signals.push(signal)
-   if(fail && calls%6===1) return Promise.reject(new Error('service unavailable'))
+   if(fail && calls%7===1) return Promise.reject(new Error('service unavailable'))
    return immediate && !fail ? Promise.resolve({status:'ok'}) : new Promise(()=>{})
  }})
  const document={hidden, addEventListener:(key,fn)=>listeners.set(key,fn),removeEventListener:key=>listeners.delete(key)}
@@ -25,9 +25,9 @@ function mount({hidden=false, immediate=false}={}) {
 const flush=async()=>{await new Promise(resolve=>setImmediate(resolve))}
 test('polling deduplicates refresh while busy and aborts/cleans up on unmount',async()=>{
  const s=mount()
- assert.equal(s.calls,6)
+ assert.equal(s.calls,7)
  s.hook.refresh();s.hook.refresh()
- assert.equal(s.calls,6)
+ assert.equal(s.calls,7)
  s.cleanup()
  assert.ok(s.signals.every(signal=>signal.aborted))
  assert.equal(s.listeners.size,0)
@@ -39,8 +39,8 @@ test('failed batch aborts siblings and retains the last successful snapshot',asy
  const snapshot=s.states[0]
  assert.ok(snapshot)
  s.fail();s.hook.refresh();await flush()
- assert.equal(s.calls,12)
- assert.ok(s.signals.slice(6).every(signal=>signal.aborted))
+ assert.equal(s.calls,14)
+ assert.ok(s.signals.slice(7).every(signal=>signal.aborted))
  assert.equal(s.states[0],snapshot)
  assert.equal(s.states[1],'service unavailable')
  assert.equal([...s.timers.values()].filter(timer=>timer.delay===5000).length,1)
@@ -50,8 +50,8 @@ test('hidden workspace suspends polling and visible refresh does not duplicate a
  const s=mount({hidden:true})
  assert.equal(s.calls,0)
  s.document.hidden=false;s.listeners.get('visibilitychange')()
- assert.equal(s.calls,6)
+ assert.equal(s.calls,7)
  s.listeners.get('visibilitychange')()
- assert.equal(s.calls,6)
+ assert.equal(s.calls,7)
  s.cleanup()
 })

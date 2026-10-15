@@ -141,6 +141,45 @@ class IntegratedPlatformTests(unittest.TestCase):
         finally:
             legacy_engine.dispose()
 
+    def test_risk_hierarchy_aggregates_services_and_explains_drivers(self):
+        self.request_user("user_101")
+        self.client.get("/api/v2/debug")
+        self.client.get("/api/v1/admin/export")
+        res = self.client.get("/api/risk-hierarchy")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("platform", data)
+        self.assertIn("services", data)
+        self.assertGreaterEqual(data["platform"]["total_services"], 2)
+        self.assertGreaterEqual(data["platform"]["total_shadow_endpoints"], 2)
+        self.assertTrue(0 <= data["platform"]["risk_score"] <= 100)
+        service_names = [s["name"] for s in data["services"]]
+        self.assertTrue(any("Identity" in name for name in service_names))
+        self.assertTrue(any("Infrastructure" in name or "Governance" in name for name in service_names))
+        for svc in data["services"]:
+            self.assertTrue(0 <= svc["risk_score"] <= 100)
+            self.assertIn(svc["severity"], ("LOW", "MEDIUM", "HIGH", "CRITICAL"))
+            self.assertTrue(len(svc["endpoints"]) > 0)
+            self.assertTrue(len(svc["drivers"]) > 0)
+
+    def test_execution_flow_traces_request_to_evidence(self):
+        # Trigger BOLA to create alert and linked traffic event
+        self.assertEqual(self.request_user("user_202").status_code, 200)
+        res = self.client.get("/api/execution-flow")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["has_data"])
+        self.assertEqual(len(data["stages"]), 7)
+        stage_names = [s["name"] for s in data["stages"]]
+        self.assertIn("Incoming Edge Request", stage_names[0])
+        self.assertIn("Endpoint", stage_names[1])
+        self.assertIn("Traffic Log", stage_names[2])
+        self.assertIn("Security Engine", stage_names[3])
+        self.assertIn("Alert", stage_names[4])
+        self.assertIn("Risk", stage_names[5])
+        self.assertIn("Evidence", stage_names[6])
+        self.assertIsNotNone(data["stages"][6]["meta"]["Linked Traffic ID"])
+
     @classmethod
     def tearDownClass(cls):
         db_client.engine.dispose()

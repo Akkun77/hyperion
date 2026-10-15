@@ -1,5 +1,5 @@
-﻿// frontend/src/api.ts
-import { APITrafficEvent, SecurityAlert, RiskScore, HealthResponse, APITrafficLog, GovernanceKPIs, InventoryEndpoint } from './types'
+// frontend/src/api.ts
+import { APITrafficEvent, SecurityAlert, RiskScore, HealthResponse, APITrafficLog, GovernanceKPIs, InventoryEndpoint, RiskHierarchyResponse, ExecutionFlowResponse } from './types'
 
 const API_BASE = (import.meta as any).env.VITE_API_BASE || 'http://localhost:8000'
 
@@ -40,6 +40,20 @@ export const api = {
   getKPIs: async (signal?: AbortSignal): Promise<GovernanceKPIs> => {
     const res = await fetch(`${API_BASE}/api/governance/kpis`, { signal })
     if (!res.ok) throw new Error('Failed to fetch dashboard metrics')
+    return res.json()
+  },
+  getRiskHierarchy: async (signal?: AbortSignal): Promise<RiskHierarchyResponse> => {
+    const res = await fetch(`${API_BASE}/api/risk-hierarchy`, { signal })
+    if (!res.ok) throw new Error('Failed to fetch risk hierarchy')
+    return res.json()
+  },
+  getExecutionFlow: async (options?: { alertId?: string; eventId?: number }, signal?: AbortSignal): Promise<ExecutionFlowResponse> => {
+    const params = new URLSearchParams()
+    if (options?.alertId) params.set('alert_id', options.alertId)
+    if (options?.eventId) params.set('event_id', String(options.eventId))
+    const query = params.toString() ? `?${params.toString()}` : ''
+    const res = await fetch(`${API_BASE}/api/execution-flow${query}`, { signal })
+    if (!res.ok) throw new Error('Failed to fetch execution flow')
     return res.json()
   },
   simulate: async (): Promise<{ status: string; output?: string; errors?: string; message?: string }> => {

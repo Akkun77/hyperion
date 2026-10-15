@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '../api'
-import { APITrafficEvent, GovernanceKPIs, HealthResponse, InventoryEndpoint, RiskScore, SecurityAlert } from '../types'
+import { APITrafficEvent, GovernanceKPIs, HealthResponse, InventoryEndpoint, RiskHierarchyResponse, RiskScore, SecurityAlert } from '../types'
 
 export interface SecuritySnapshot {
   health: HealthResponse
@@ -9,6 +9,7 @@ export interface SecuritySnapshot {
   traffic: APITrafficEvent[]
   alerts: SecurityAlert[]
   risk: RiskScore[]
+  hierarchy: RiskHierarchyResponse
 }
 
 // One subscription for the entire workspace, not one per tab. No overlapping
@@ -34,11 +35,12 @@ export function useSecurityData() {
       timeout = window.setTimeout(() => controller?.abort(), 12000)
       try {
         const signal = controller.signal
-        const [health, kpis, inventory, traffic, alerts, risk] = await Promise.all([
+        const [health, kpis, inventory, traffic, alerts, risk, hierarchy] = await Promise.all([
           api.health(signal), api.getKPIs(signal), api.getInventory(signal),
           api.getTrafficEvents(0, 1000, signal), api.getSecurityAlerts(0, 100, signal), api.getRiskScores(0, 1000, signal),
+          api.getRiskHierarchy(signal),
         ])
-        if (!disposed) { setData({ health, kpis, inventory, traffic, alerts, risk }); setError(null); setUpdated(new Date()) }
+        if (!disposed) { setData({ health, kpis, inventory, traffic, alerts, risk, hierarchy }); setError(null); setUpdated(new Date()) }
       } catch (reason) {
         // Promise.all fails fast: cancel sibling requests before scheduling a new batch.
         controller.abort()
