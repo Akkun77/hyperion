@@ -179,7 +179,7 @@ export default function WatchHyperionWork() {
     <section className="watch-editorial-experience" aria-label="Watch Hyperion work">
       {/* Visual Identity Caption & Geometry Variant Switcher */}
       <aside className="sculpture-caption-bar" aria-label="Sculpture guidance">
-        <p className="sculpture-caption">
+        <p className="watch-sculpture-caption">
           Ambient loop motion is symbolic. Live luminous pulse traces the 7 recorded processing stages.
         </p>
         <div className="geometry-toggle" role="group" aria-label="Core geometry variant">

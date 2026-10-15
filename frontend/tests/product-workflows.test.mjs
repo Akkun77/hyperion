@@ -24,8 +24,10 @@ test('actual Connect workflow distinguishes registration from capture and requir
 })
 test('actual Watch experience requires explicit consent and never invents an initial execution',()=>{
  const html=renderToStaticMarkup(React.createElement(Watch))
- for(const text of ['Normal request','Scraping','Token misuse','BOLA','Shadow discovery','Run controlled scenario','Every API leaves a signal','CONTROLLED BOLA SCENARIO BRIEFING'])assert.ok(html.includes(text),text)
+ for(const text of ['Normal request','Scraping','Token misuse','BOLA','Shadow discovery','Run controlled scenario','Every API leaves a signal','CONTROLLED BOLA SCENARIO BRIEFING','Ambient loop motion is symbolic','I am authorized to run this controlled local demonstration.'])assert.ok(html.includes(text),text)
  assert.match(html,/<button[^>]+disabled=""[^>]*>Run controlled scenario/)
+ assert.match(html,/<aside class="sculpture-caption-bar"[^>]*>[\s\S]*?Ambient loop motion is symbolic/)
+ assert.match(html,/<label class="workflow-consent"[^>]*>[\s\S]*?I am authorized to run this controlled local demonstration\./)
  assert.ok(!html.includes('COMPLETED CONTROLLED LOCAL EXECUTION'))
  assert.ok(!html.includes('demo-stage-detail'))
 })
