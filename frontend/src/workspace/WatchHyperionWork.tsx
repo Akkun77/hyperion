@@ -12,37 +12,37 @@ const scenarios = [
 
 const BOLA_NARRATIVES: Record<number, { subtitle: string; lead: string; explanation: string }> = {
   1: {
-    subtitle: '01 — REQUEST',
+    subtitle: 'SCENE 01 / 07 — REQUEST',
     lead: "A user attempts to access another user's resource.",
     explanation: 'Authenticated user user_101 transmits a GET request to /api/v1/users/{id} targeting record user_202.'
   },
   2: {
-    subtitle: '02 — OBSERVATION',
+    subtitle: 'SCENE 02 / 07 — OBSERVATION',
     lead: 'Hyperion records the request and identifies the target API.',
     explanation: 'The request is resolved against the managed OpenAPI catalog under Identity & User Service and flagged for PII transmission.'
   },
   3: {
-    subtitle: '03 — TRAFFIC AUDIT',
+    subtitle: 'SCENE 03 / 07 — TRAFFIC AUDIT',
     lead: 'The transaction is permanently recorded in the audit store.',
     explanation: 'Hyperion logs the incoming request, caller IP, and HTTP status into SQLite for real-time analysis and compliance forensics.'
   },
   4: {
-    subtitle: '04 — SECURITY ANALYSIS',
+    subtitle: 'SCENE 04 / 07 — SECURITY ANALYSIS',
     lead: 'The response reveals an authorization failure.',
     explanation: "Token subject 'user_101' requested resource 'user_202'. The server returned status HTTP 200 instead of expected HTTP 403 Forbidden."
   },
   5: {
-    subtitle: '05 — FINDING',
+    subtitle: 'SCENE 05 / 07 — FINDING',
     lead: 'Hyperion identifies a broken object-level authorization vulnerability.',
     explanation: 'BOLA Ownership Detector triggers with CRITICAL severity. The authorization bypass is isolated and confirmed.'
   },
   6: {
-    subtitle: '06 — RISK',
+    subtitle: 'SCENE 06 / 07 — RISK',
     lead: 'The endpoint risk reflects the security finding.',
     explanation: 'Risk score is dynamically recalculated to reflect an active exploit condition (+30 BOLA factor, +20 PII indicator).'
   },
   7: {
-    subtitle: '07 — EVIDENCE',
+    subtitle: 'SCENE 07 / 07 — FORENSIC EVIDENCE',
     lead: 'The finding is linked to the originating request.',
     explanation: 'Forensic binding connects Alert to the exact persisted Traffic Event, providing an unalterable trail for investigation.'
   }
@@ -89,7 +89,7 @@ export default function WatchHyperionWork() {
       setPlaying(false)
       return
     }
-    const timer = window.setTimeout(() => setStage(current => current + 1), 620)
+    const timer = window.setTimeout(() => setStage(current => current + 1), 1100)
     return () => window.clearTimeout(timer)
   }, [result, stage, playing])
 
@@ -130,7 +130,7 @@ export default function WatchHyperionWork() {
 
   const selected = result?.flow.stages[stage]
   const currentNarrative = BOLA_NARRATIVES[stage + 1] || {
-    subtitle: `STAGE 0${stage + 1}`,
+    subtitle: `SCENE 0${stage + 1} / 0${result?.flow.stages.length || 7}`,
     lead: selected?.summary || '',
     explanation: selected?.name || ''
   }
@@ -235,128 +235,175 @@ export default function WatchHyperionWork() {
             {result.presentation} Replay never sends additional requests.
           </p>
 
-          {/* 7 Interactive Stage Tabs */}
-          <div className="confirmed-stages" aria-label="Confirmed execution stages">
+          {/* Stepper Navigation Track */}
+          <nav className="scene-stepper-track" aria-label="Execution scenes">
             {result.flow.stages.map((item, index) => (
               <button
                 key={item.id}
-                className={index === stage ? 'active' : ''}
+                className={`scene-pill ${index === stage ? 'active' : ''}`}
                 aria-current={index === stage ? 'step' : undefined}
                 onClick={() => {
                   setPlaying(false)
                   setStage(index)
                 }}
               >
-                <small>0{item.step} · {item.status}</small>
-                <span>{item.name}</span>
+                <span className="pill-index">0{item.step}</span>
+                <span className="pill-name">{item.name}</span>
               </button>
             ))}
-          </div>
+          </nav>
 
-          {/* Story Narrative Box */}
-          <div className="story-narrative-card">
-            <span className="eyebrow">{currentNarrative.subtitle}</span>
-            <h3 className="story-lead">{currentNarrative.lead}</h3>
-            <p className="story-explanation">{currentNarrative.explanation}</p>
-          </div>
-
-          {/* Selected Confirmed Stage Detail */}
+          {/* Cinematic One-Scene-At-A-Time Active Scene */}
           {selected && (
             <section
               key={`${result.run_id}:${selected.id}`}
-              className="demo-stage-detail workflow-reveal"
-              aria-label="Selected confirmed stage"
+              className="demo-stage-detail workflow-reveal scene-card"
+              aria-label="Active execution scene"
             >
-              <span className="eyebrow">RECORDED STAGE 0{selected.step}</span>
-              <h2>{selected.name}</h2>
-              <p>{selected.summary}</p>
-              <dl>
-                {Object.entries(selected.meta).map(([key, value]) => (
-                  <div key={key}>
-                    <dt>{key}</dt>
-                    <dd>
-                      {typeof value === 'object' && value !== null
-                        ? JSON.stringify(value)
-                        : String(value ?? 'Not available')}
-                    </dd>
+              <div className="scene-meta-header">
+                <span className="eyebrow">{currentNarrative.subtitle}</span>
+                <span className="scene-counter">
+                  Scene {stage + 1} of {result.flow.stages.length}
+                </span>
+              </div>
+
+              <h2 className="scene-title">{currentNarrative.lead}</h2>
+              <p className="scene-explanation">{currentNarrative.explanation}</p>
+
+              {/* Scene Telemetry Grid */}
+              <div className="scene-telemetry-box">
+                <span className="telemetry-box-title">RECORDED STAGE TELEMETRY</span>
+                <dl className="scene-specs-grid">
+                  {Object.entries(selected.meta).map(([key, value]) => (
+                    <div key={key} className="spec-cell">
+                      <dt className="spec-label">{key}</dt>
+                      <dd className="spec-value">
+                        {typeof value === 'object' && value !== null
+                          ? JSON.stringify(value)
+                          : String(value ?? 'Not available')}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              {/* In Scene 07 (Evidence) or when finding exists: Verified Evidence Spotlight */}
+              {stage === result.flow.stages.length - 1 && (
+                <div className="scene-evidence-spotlight">
+                  <div className="evidence-header">
+                    <span className="eyebrow">VERIFIED FORENSIC EVIDENCE</span>
+                    <h3>BOLA Finding #{result.flow.selected_alert_id || result.findings[0]?.alert_id || '1'}</h3>
                   </div>
-                ))}
-              </dl>
+
+                  <div className="evidence-specs-grid">
+                    <div>
+                      <span className="spec-label">Target Endpoint</span>
+                      <span className="spec-val mono">
+                        {result.selected_request.method} {result.selected_request.endpoint}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="spec-label">Caller Identity</span>
+                      <span className="spec-val mono">{result.selected_request.user_id || 'user_101'}</span>
+                    </div>
+                    <div>
+                      <span className="spec-label">Target Resource</span>
+                      <span className="spec-val mono spec-warning">
+                        {result.selected_request.target_resource_id || 'user_202'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="spec-label">Observed HTTP Status</span>
+                      <span className="spec-val mono spec-warning">
+                        HTTP {result.selected_request.status_code} (Bypass)
+                      </span>
+                    </div>
+                    <div>
+                      <span className="spec-label">Detector</span>
+                      <span className="spec-val">
+                        {result.findings[0]?.alert_type?.toUpperCase() || 'BOLA'} Ownership Detector
+                      </span>
+                    </div>
+                    <div>
+                      <span className="spec-label">Severity</span>
+                      <span className="spec-val badge-critical">
+                        {result.findings[0]?.severity || 'CRITICAL'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="evidence-actions">
+                    <Link
+                      className="button primary evidence-cta"
+                      href={`/command-center/investigation?alert=${result.flow.selected_alert_id || result.findings[0]?.alert_id || '1'}`}
+                    >
+                      Inspect real finding evidence in Investigation →
+                    </Link>
+                    <Link
+                      className="text-link"
+                      href={`/command-center/investigation?event=${result.selected_request.id}`}
+                    >
+                      Inspect real request evidence #{result.selected_request.id} ↗
+                    </Link>
+                    {result.flow.selected_alert_id && (
+                      <Link
+                        className="text-link"
+                        href={`/command-center/investigation?alert=${result.flow.selected_alert_id}`}
+                      >
+                        Inspect generated finding ↗
+                      </Link>
+                    )}
+                    <Link
+                      className="text-link"
+                      href={`/command-center/flow?event=${result.selected_request.id}`}
+                    >
+                      Open full execution flow ↗
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Scene Navigation Footer Controls */}
+              <div className="scene-navigation-footer">
+                <button
+                  className="scene-nav-btn prev-btn"
+                  disabled={stage === 0}
+                  onClick={() => {
+                    setPlaying(false)
+                    setStage(s => Math.max(0, s - 1))
+                  }}
+                >
+                  ← Previous Scene
+                </button>
+
+                <span className="scene-indicator-pill">
+                  {stage + 1} / {result.flow.stages.length}
+                </span>
+
+                {stage < result.flow.stages.length - 1 ? (
+                  <button
+                    className="scene-nav-btn next-btn primary"
+                    onClick={() => {
+                      setPlaying(false)
+                      setStage(s => s + 1)
+                    }}
+                  >
+                    Next Scene →
+                  </button>
+                ) : (
+                  <button
+                    className="scene-nav-btn replay-action-btn"
+                    onClick={() => {
+                      setStage(0)
+                      setPlaying(true)
+                    }}
+                  >
+                    Replay Walkthrough ↺
+                  </button>
+                )}
+              </div>
             </section>
           )}
-
-          {/* Verified Evidence Reveal */}
-          <section className="evidence-reveal-card" aria-label="Verified Forensic Evidence">
-            <div className="evidence-header">
-              <span className="eyebrow">VERIFIED FORENSIC EVIDENCE</span>
-              <h3>BOLA Finding #{result.flow.selected_alert_id || result.findings[0]?.alert_id || '1'}</h3>
-            </div>
-            <div className="evidence-specs-grid">
-              <div>
-                <span className="spec-label">Target Endpoint</span>
-                <span className="spec-val mono">
-                  {result.selected_request.method} {result.selected_request.endpoint}
-                </span>
-              </div>
-              <div>
-                <span className="spec-label">Caller Identity</span>
-                <span className="spec-val mono">{result.selected_request.user_id || 'user_101'}</span>
-              </div>
-              <div>
-                <span className="spec-label">Target Resource</span>
-                <span className="spec-val mono spec-warning">
-                  {result.selected_request.target_resource_id || 'user_202'}
-                </span>
-              </div>
-              <div>
-                <span className="spec-label">Observed HTTP Status</span>
-                <span className="spec-val mono spec-warning">
-                  HTTP {result.selected_request.status_code} (Bypass)
-                </span>
-              </div>
-              <div>
-                <span className="spec-label">Detector</span>
-                <span className="spec-val">
-                  {result.findings[0]?.alert_type?.toUpperCase() || 'BOLA'} Ownership Detector
-                </span>
-              </div>
-              <div>
-                <span className="spec-label">Severity</span>
-                <span className="spec-val badge-critical">
-                  {result.findings[0]?.severity || 'CRITICAL'}
-                </span>
-              </div>
-            </div>
-
-            <div className="evidence-actions">
-              <Link
-                className="button primary evidence-cta"
-                href={`/command-center/investigation?alert=${result.flow.selected_alert_id || result.findings[0]?.alert_id || '1'}`}
-              >
-                Inspect real finding evidence in Investigation →
-              </Link>
-              <Link
-                className="text-link"
-                href={`/command-center/investigation?event=${result.selected_request.id}`}
-              >
-                Inspect real request evidence #{result.selected_request.id} ↗
-              </Link>
-              {result.flow.selected_alert_id && (
-                <Link
-                  className="text-link"
-                  href={`/command-center/investigation?alert=${result.flow.selected_alert_id}`}
-                >
-                  Inspect generated finding ↗
-                </Link>
-              )}
-              <Link
-                className="text-link"
-                href={`/command-center/flow?event=${result.selected_request.id}`}
-              >
-                Open full execution flow ↗
-              </Link>
-            </div>
-          </section>
         </div>
       )}
     </section>

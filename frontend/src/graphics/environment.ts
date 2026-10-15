@@ -27,7 +27,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       vec3 tangent=normalize(curve(u+.001)-center);
       vec3 side=normalize(cross(tangent,vec3(0.,0.,1.)));
       vec3 up=normalize(cross(side,tangent));
-      float radius=.205 + .045*sin(u*3. + uTime*.35);
+      float radius=.088 + .018*sin(u*3. + uTime*.35);
       vec3 normal=cos(v)*side+sin(v)*up;
       mat3 rotation=rotate(.55+uTime*.065+uPointer.y*.10, -.3+uTime*.095+uPointer.x*.12);
       vec3 p=rotation*(center+radius*normal);
@@ -55,13 +55,13 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       vec3 view=normalize(vec3(0.,0.,4.5)-vPosition);
       vec3 light=normalize(vec3(-2.,4.,4.)-vPosition);
       float diffuse=max(dot(n,light),0.);
-      float rim=pow(1.-max(dot(n,view),0.),2.8);
-      float spec=pow(max(dot(reflect(-light,n),view),0.),65.);
+      float rim=pow(1.-max(dot(n,view),0.),3.0);
+      float spec=pow(max(dot(reflect(-light,n),view),0.),80.);
       float stripe=pow(.5+.5*sin(vArc*32.+uTime*.2),28.);
-      vec3 color=vec3(.006,.055,.032)+vec3(.02,.40,.19)*diffuse;
-      color+=vec3(.16,.95,.55)*rim*.8;
-      color+=vec3(.7,1.,.82)*spec*.85;
-      color+=vec3(.03,.18,.09)*stripe*diffuse;
+      vec3 color=vec3(.004,.06,.036)+vec3(.025,.48,.24)*diffuse;
+      color+=vec3(.20,1.0,.62)*rim*1.05;
+      color+=vec3(.85,1.,.92)*spec*1.15;
+      color+=vec3(.04,.22,.11)*stripe*diffuse;
       // A localized signal travels along the actual parametric centerline.
       // Circular distance makes the seam at 0 / 2pi continuous; this is ambient, not telemetry.
       float signalArc=mod(uTime*.65,6.2831853);
