@@ -65,6 +65,32 @@ class IntegratedPlatformTests(unittest.TestCase):
         self.assertGreaterEqual(risk["score"], 50)
         self.assertTrue(any("BOLA" in factor for factor in risk["factors"]))
 
+    def test_distinguish_blocked_attempt_from_confirmed_bola_violation(self):
+        # 1. Correctly blocked access attempt (status 403)
+        res_blocked = self.client.get("/api/v1/users/user_202",
+            headers={"Authorization": "Bearer demo-token", "X-User-Id": "user_101",
+                     "X-Forwarded-For": "192.0.2.1", "X-Enforce-Auth": "true"})
+        self.assertEqual(res_blocked.status_code, 403)
+        traffic = self.client.get("/api/traffic").json()
+        self.assertEqual(len(traffic), 1)
+        self.assertEqual(traffic[0]["status_code"], 403)
+        self.assertEqual(self.client.get("/api/alerts").json(), [])
+
+        # 2. Confirmed authorization violation (status 200, access granted)
+        res_violation = self.client.get("/api/v1/users/user_202",
+            headers={"Authorization": "Bearer demo-token", "X-User-Id": "user_101",
+                     "X-Forwarded-For": "192.0.2.1"})
+        self.assertEqual(res_violation.status_code, 200)
+        alerts = self.client.get("/api/alerts").json()
+        self.assertEqual(len(alerts), 1)
+        alert = alerts[0]
+        self.assertEqual(alert["alert_type"], "bola")
+        self.assertTrue(alert["related_event_ids"])
+        evidence = self.client.get(f"/api/traffic/{alert['related_event_ids'][0]}").json()
+        self.assertEqual(evidence["user_id"], "user_101")
+        self.assertEqual(evidence["target_resource_id"], "user_202")
+        self.assertEqual(evidence["status_code"], 200)
+
     def test_token_misuse_and_unrelated_request_does_not_repeat_it(self):
         for i in range(3):
             self.request_user(ip=f"192.0.2.{i+1}")

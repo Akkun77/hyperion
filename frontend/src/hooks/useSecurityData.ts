@@ -24,13 +24,14 @@ export function useSecurityData() {
     let disposed = false
     let busy = false
     let timer = 0
+    let timeout = 0
     let controller: AbortController | undefined
     const poll = async () => {
       if (disposed || busy || document.hidden) return
       busy = true; setRefreshing(true)
       window.clearTimeout(timer)
       controller = new AbortController()
-      const timeout = window.setTimeout(() => controller?.abort(), 12000)
+      timeout = window.setTimeout(() => controller?.abort(), 12000)
       try {
         const signal = controller.signal
         const [health, kpis, inventory, traffic, alerts, risk] = await Promise.all([
@@ -39,6 +40,8 @@ export function useSecurityData() {
         ])
         if (!disposed) { setData({ health, kpis, inventory, traffic, alerts, risk }); setError(null); setUpdated(new Date()) }
       } catch (reason) {
+        // Promise.all fails fast: cancel sibling requests before scheduling a new batch.
+        controller.abort()
         if (!disposed) setError(reason instanceof Error && reason.name !== 'AbortError' ? reason.message : 'Backend request timed out. Check the local service.')
       } finally {
         window.clearTimeout(timeout); busy = false
@@ -50,7 +53,7 @@ export function useSecurityData() {
     document.addEventListener('visibilitychange', visibility)
     void poll()
     return () => {
-      disposed = true; window.clearTimeout(timer); controller?.abort()
+      disposed = true; window.clearTimeout(timer); window.clearTimeout(timeout); controller?.abort()
       document.removeEventListener('visibilitychange', visibility)
       refreshRef.current = () => {}
     }

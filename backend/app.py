@@ -535,6 +535,10 @@ def trigger_simulation():
 # Documented Endpoint 1: User Profile
 @app.get("/api/v1/users/{id}")
 def get_user_profile(id: str, request: Request):
+    if request.headers.get("x-enforce-auth") == "true":
+        user_id = request.headers.get("x-user-id")
+        if user_id and user_id != id:
+            raise HTTPException(status_code=403, detail="Forbidden: Access control enforced")
     return {
         "status": "success",
         "user_id": id,

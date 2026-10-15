@@ -15,8 +15,8 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch traffic events')
     return res.json()
   },
-  getTrafficLogById: async (id: number): Promise<APITrafficLog> => {
-    const res = await fetch(`${API_BASE}/api/traffic/${id}`)
+  getTrafficLogById: async (id: number, signal?: AbortSignal): Promise<APITrafficLog> => {
+    const res = await fetch(`${API_BASE}/api/traffic/${id}`, { signal })
     if (!res.ok) throw new Error('Failed to fetch traffic log by ID')
     return res.json()
   },
