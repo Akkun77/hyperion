@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import AnimatedEnvironment from './components/AnimatedEnvironment'
 import { Mark } from './components/Brand'
 import Landing from './pages/Landing'
+import './workspace/design-foundation.css'
 import { Link, usePath } from './router'
 
 const CommandCenter = lazy(() => import('./pages/CommandCenter'))
@@ -19,7 +20,7 @@ export default function App() {
     const timer = window.setTimeout(() => {
       setIntro(false)
       try { sessionStorage.setItem('hyperion-initialized', 'true') } catch { /* optional */ }
-    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1050)
+    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 2050)
     return () => window.clearTimeout(timer)
   }, [])
   useEffect(() => {
@@ -38,7 +39,7 @@ export default function App() {
   return <>
     <a className="skip-link" href="#main">Skip to content</a>
     <AnimatedEnvironment subdued={operational} visualMode={visualMode} />
-    {intro && <div className="initialization" aria-hidden="true"><Mark /><span>HYPERION</span><small>API SECURITY SYSTEMS</small></div>}
+    {intro && <div className="initialization" aria-hidden="true"><Mark animated /><span>HYPERION</span><small>API SECURITY SYSTEMS</small></div>}
     {known ? operational
       ? <Suspense fallback={<main id="main" className="workspace-loading">Opening command center…</main>}><CommandCenter path={path} /></Suspense>
       : <Landing platform={pathname === '/platform'} visualMode={visualMode} onVisualMode={setVisualMode} />

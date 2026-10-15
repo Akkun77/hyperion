@@ -179,6 +179,8 @@ async def traffic_interception_middleware(request: Request, call_next):
         or raw_path.startswith("/api/traffic/")
         or raw_path == "/api/alerts"
         or raw_path == "/api/risk-scores"
+        or raw_path == "/api/risk-hierarchy"
+        or raw_path == "/api/execution-flow"
         or raw_path.startswith("/static")
         or raw_path in ("/", "/index.html", "/favicon.ico")
     ):

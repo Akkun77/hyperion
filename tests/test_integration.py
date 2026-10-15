@@ -41,7 +41,8 @@ class IntegratedPlatformTests(unittest.TestCase):
 
     def test_health_and_dashboard_reads_do_not_ingest_themselves(self):
         for path in ["/api/health", "/api/governance/kpis", "/api/governance/inventory",
-                     "/api/governance/alerts", "/api/traffic", "/api/alerts", "/api/risk-scores"]:
+                     "/api/governance/alerts", "/api/traffic", "/api/alerts", "/api/risk-scores",
+                     "/api/risk-hierarchy", "/api/execution-flow"]:
             self.assertEqual(self.client.get(path).status_code, 200, path)
         self.assertEqual(self.client.get("/api/traffic").json(), [])
 

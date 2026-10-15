@@ -55,6 +55,13 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       color+=vec3(.16,.95,.55)*rim*.8;
       color+=vec3(.7,1.,.82)*spec*.85;
       color+=vec3(.03,.18,.09)*stripe*diffuse;
+      // A localized signal travels along the actual parametric centerline.
+      // Circular distance makes the seam at 0 / 2pi continuous; this is ambient, not telemetry.
+      float signalArc=mod(uTime*.65,6.2831853);
+      float arcDistance=abs(vArc-signalArc);
+      arcDistance=min(arcDistance,6.2831853-arcDistance);
+      float pulse=exp(-pow(arcDistance/.16,2.));
+      color+=vec3(.28,.95,.60)*pulse*(.35+.65*diffuse);
       gl_FragColor=vec4(color,1.);
     }`
   const shaders: WebGLShader[] = []
