@@ -18,6 +18,8 @@ Retain Space Grotesk display, Inter reading type and system-monospace metadata, 
 
 Tokens: paper #f0f3f1, soft text #a2afa8, emerald #71dab0, hairline #b5d9c31d. An 8px spacing base with optical metadata adjustments.
 
+> This milestone-01 record is retained for history. Current unified workspace behavior, Live Signal semantics and 3050ms loading timing are documented in [FRONTEND_HANDOFF.md](FRONTEND_HANDOFF.md).
+
 ## Shared shell
 
 Compact numbered text rail, one gliding active line, aria-current, keyboard focus and a native labeled mobile selector. Connection reflects real snapshot success/failure. Header, atmosphere and one WebGL canvas persist across categories. Operational atmosphere is deliberately quiet; marketing layout is not redesigned.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Mark } from './Brand'
 
 export default function AnimatedEnvironment({ subdued, visualMode }: { subdued: boolean; visualMode: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -21,7 +22,7 @@ export default function AnimatedEnvironment({ subdued, visualMode }: { subdued: 
 
   return <div className={`environment ${subdued ? 'environment-subdued' : ''}`} aria-hidden="true" data-renderer={mode}>
     <div className="environment-halo" />
-    <div className={`fallback-sculpture ${mode === 'webgl' ? 'fallback-hidden' : ''}`}><i /><i /><i /></div>
+    <div className={`fallback-sculpture ${mode === 'webgl' ? 'fallback-hidden' : ''}`}><Mark animated={visualMode === 'full'}/></div>
     <canvas ref={canvasRef} className={mode === 'webgl' ? 'scene-visible' : ''} />
     <div className="environment-grain" />
   </div>

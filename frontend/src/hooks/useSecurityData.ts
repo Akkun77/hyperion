@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '../api'
+import { emptySignalState, reconcileSignals } from '../workspace/liveSignal'
 import { APITrafficEvent, GovernanceKPIs, HealthResponse, InventoryEndpoint, RiskHierarchyResponse, RiskScore, SecurityAlert } from '../types'
 
 export interface SecuritySnapshot {
@@ -19,6 +20,8 @@ export function useSecurityData() {
   const [error, setError] = useState<string | null>(null)
   const [updated, setUpdated] = useState<Date | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [signals, setSignals] = useState(emptySignalState)
+  const signalRef = useRef(emptySignalState())
   const refreshRef = useRef<() => void>(() => {})
   const refresh = useCallback(() => refreshRef.current(), [])
   useEffect(() => {
@@ -40,11 +43,22 @@ export function useSecurityData() {
           api.getTrafficEvents(0, 1000, signal), api.getSecurityAlerts(0, 100, signal), api.getRiskScores(0, 1000, signal),
           api.getRiskHierarchy(signal),
         ])
-        if (!disposed) { setData({ health, kpis, inventory, traffic, alerts, risk, hierarchy }); setError(null); setUpdated(new Date()) }
+        if (!disposed) {
+          const snapshot = { health, kpis, inventory, traffic, alerts, risk, hierarchy }
+          const next = reconcileSignals(signalRef.current, snapshot)
+          if (next.revision !== signalRef.current.revision) window.dispatchEvent(new CustomEvent('hyperion-observation', {detail:{revision:next.revision,signals:next.batch}}))
+          signalRef.current = next; setSignals(next)
+          setData(snapshot); setError(null); setUpdated(new Date())
+        }
       } catch (reason) {
         // Promise.all fails fast: cancel sibling requests before scheduling a new batch.
         controller.abort()
-        if (!disposed) setError(reason instanceof Error && reason.name !== 'AbortError' ? reason.message : 'Backend request timed out. Check the local service.')
+        if (!disposed) {
+          signalRef.current = {...signalRef.current,suspended:true,batch:[]}
+          setSignals(signalRef.current)
+          window.dispatchEvent(new CustomEvent('hyperion-observation', {detail:{disconnected:true,signals:[]}}))
+          setError(reason instanceof Error && reason.name !== 'AbortError' ? reason.message : 'Backend request timed out. Check the local service.')
+        }
       } finally {
         window.clearTimeout(timeout); busy = false
         if (!disposed) { setRefreshing(false); timer = window.setTimeout(poll, 5000) }
@@ -58,7 +72,8 @@ export function useSecurityData() {
       disposed = true; window.clearTimeout(timer); window.clearTimeout(timeout); controller?.abort()
       document.removeEventListener('visibilitychange', visibility)
       refreshRef.current = () => {}
+      window.dispatchEvent(new CustomEvent('hyperion-observation', {detail:{disconnected:true,signals:[]}}))
     }
   }, [])
-  return { data, error, updated, refreshing, refresh }
+  return { data, error, updated, refreshing, refresh, signals }
 }

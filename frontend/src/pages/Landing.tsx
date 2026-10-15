@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect } from 'react'
-import Brand from '../components/Brand'
+import Brand, { Mark } from '../components/Brand'
 import { Link } from '../router'
 
 const chapters = [
@@ -13,7 +13,7 @@ const chapters = [
 function Illustration({ kind }: { kind: string }) {
   return <div className={`concept concept-${kind}`} aria-label="Illustrative API security diagram, not live telemetry" role="img">
     <span className="concept-label">SYSTEM CONCEPT / NOT LIVE DATA</span>
-    {kind === 'discovery' && <><div className="concept-core">H<span>GATEWAY</span></div><div className="orbit orbit-a"/><div className="orbit orbit-b"/><span className="concept-node node-a">GET /users</span><span className="concept-node node-b">POST /payments</span><span className="concept-node node-c">? /undocumented</span></>}
+    {kind === 'discovery' && <><div className="concept-core"><Mark/><span>GATEWAY</span></div><div className="orbit orbit-a"/><div className="orbit orbit-b"/><span className="concept-node node-a">GET /users</span><span className="concept-node node-b">POST /payments</span><span className="concept-node node-c">? /undocumented</span></>}
     {kind === 'traffic' && <><div className="signal-lines">{Array.from({ length: 8 }, (_, i) => <i key={i} style={{ '--i': i } as CSSProperties} />)}</div><div className="signal-caption"><span>REQUEST</span><span>OBSERVE</span><span>RECORD</span></div></>}
     {kind === 'detection' && <div className="detection-stack"><div><i />Rate anomaly<span>SCRAPING</span></div><div><i />IP diversity<span>TOKEN MISUSE</span></div><div><i />Ownership mismatch<span>BOLA</span></div></div>}
     {kind === 'risk' && <><div className="risk-orbit"><span>0—100<small>EXPLAINABLE BY DESIGN</small></span></div><span className="concept-node risk-factor">EXPOSURE + BEHAVIOR</span></>}

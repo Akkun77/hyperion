@@ -1,3 +1,4 @@
+import { pulseTone, ObservedSignal } from '../workspace/liveSignal'
 // One native WebGL surface. No animation frames pass through React state.
 export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: string) => void, forceReduced = false) {
   const gl = canvas.getContext('webgl', { alpha: true, antialias: true, powerPreference: 'low-power' })
@@ -43,6 +44,8 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     varying vec3 vPosition;
     varying float vArc;
     uniform float uTime;
+    uniform float uSignalAge;
+    uniform float uSignalTone;
     void main() {
       vec3 n=normalize(vNormal);
       vec3 view=normalize(vec3(0.,0.,4.5)-vPosition);
@@ -62,6 +65,13 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       arcDistance=min(arcDistance,6.2831853-arcDistance);
       float pulse=exp(-pow(arcDistance/.16,2.));
       color+=vec3(.28,.95,.60)*pulse*(.35+.65*diffuse);
+      // A separate one-shot accent is driven by a deduplicated observed batch.
+      float eventArc=mod(uSignalAge*2.4,6.2831853);
+      float eventDistance=abs(vArc-eventArc);
+      eventDistance=min(eventDistance,6.2831853-eventDistance);
+      float eventPulse=exp(-pow(eventDistance/.22,2.))*max(0.,1.-uSignalAge/2.6);
+      vec3 eventColor=uSignalTone>2.5 ? vec3(1.,.18,.09) : uSignalTone>1.5 ? vec3(1.,.59,.16) : vec3(.4,1.,.72);
+      color+=eventColor*eventPulse*.95;
       gl_FragColor=vec4(color,1.);
     }`
   const shaders: WebGLShader[] = []
@@ -111,6 +121,18 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   const time = gl.getUniformLocation(program, 'uTime')
   const aspect = gl.getUniformLocation(program, 'uAspect')
   const parallax = gl.getUniformLocation(program, 'uPointer')
+  const signalAge = gl.getUniformLocation(program, 'uSignalAge')
+  const signalTone = gl.getUniformLocation(program, 'uSignalTone')
+  let observedAt = -10000
+  let tone = 1
+  function observation(event: Event) {
+    const detail = (event as CustomEvent<{disconnected?:boolean;signals:ObservedSignal[]}>).detail
+    if (detail.disconnected) { observedAt = -10000; return }
+    if (!detail.signals.length || reduced.matches || forceReduced) return
+    observedAt = performance.now(); tone = pulseTone(detail.signals)
+    canvas.dataset.signalBatches = String(Number(canvas.dataset.signalBatches || 0)+1)
+    canvas.dataset.signalTone = String(tone)
+  }
   gl.enable(gl.DEPTH_TEST)
   gl.clearColor(0, 0, 0, 0)
 
@@ -141,6 +163,8 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       previous = now; last = now
       gl!.uniform1f(time, reduced.matches || forceReduced ? 2 : elapsed)
       gl!.uniform2f(parallax, pointer[0], pointer[1])
+      gl!.uniform1f(signalAge, reduced.matches || forceReduced ? 100 : (now-observedAt)/1000)
+      gl!.uniform1f(signalTone, tone)
       gl!.clear(gl!.COLOR_BUFFER_BIT | gl!.DEPTH_BUFFER_BIT)
       gl!.drawArrays(gl!.TRIANGLES, 0, params.length/2)
       canvas.dataset.frames = String(frames)
@@ -168,6 +192,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   window.addEventListener('pointermove', move, { passive: true })
   reduced.addEventListener('change', resume)
   canvas.addEventListener('webglcontextlost', lost)
+  window.addEventListener('hyperion-observation', observation)
   resize(); setMode('webgl'); resume()
   return () => {
     stopped = true; cancelAnimationFrame(frame); observer.disconnect()
@@ -175,6 +200,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     window.removeEventListener('pointermove', move)
     reduced.removeEventListener('change', resume)
     canvas.removeEventListener('webglcontextlost', lost)
+    window.removeEventListener('hyperion-observation', observation)
     shaders.forEach(shader => gl.deleteShader(shader))
     gl.deleteBuffer(buffer); gl.deleteProgram(program)
   }

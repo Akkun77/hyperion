@@ -6,6 +6,9 @@ import { Link, navigate } from '../router'
 import { filterTraffic, trafficBuckets, findingIsNew } from '../workspace/filters'
 import '../workspace/command-center.css'
 import ThreatFindings from '../workspace/ThreatFindings'
+import LiveSignal from '../workspace/SignalObservatory'
+import RouteView from '../workspace/RouteView'
+import { useSessionValue } from '../workspace/useSessionValue'
 import { SecuritySnapshot, useSecurityData } from '../hooks/useSecurityData'
 import { APITrafficLog, InventoryEndpoint, ExecutionFlowResponse } from '../types'
 import api from '../api'
@@ -38,20 +41,23 @@ function AlertTable({ data, limit = 100, openedAt }: { data: SecuritySnapshot; l
 }
 
 function Inventory({ data }: { data: SecuritySnapshot }) {
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useSessionValue('inventory-search','')
   const [shadow, setShadow] = useState(new URLSearchParams(window.location.search).get('shadow') === 'true')
-  const [sort, setSort] = useState('risk')
+  const [sort, setSort] = useSessionValue('inventory-sort','risk')
   useEffect(() => { setShadow(new URLSearchParams(window.location.search).get('shadow') === 'true') }, [window.location.search])
-  const [method, setMethod] = useState('all')
-  const rows = data.inventory.filter(row => row.endpoint.toLowerCase().includes(search.toLowerCase()) && (!shadow || row.is_shadow) && (method === 'all' || row.method === method)).sort((a, b) => sort === 'risk' ? b.risk_score - a.risk_score : sort === 'activity' ? b.total_calls - a.total_calls : a.endpoint.localeCompare(b.endpoint))
-  return <section className="panel"><div className="table-toolbar"><label className="search-field"><span>⌕</span><input aria-label="Search endpoints" placeholder="Search endpoints…" value={search} onChange={event => setSearch(event.target.value)}/></label><select aria-label="HTTP method" value={method} onChange={event => setMethod(event.target.value)}><option value="all">All methods</option>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(value => <option key={value}>{value}</option>)}</select><label className="checkbox-label"><input type="checkbox" checked={shadow} onChange={event => setShadow(event.target.checked)}/>Shadow only</label><select aria-label="Sort endpoints" value={sort} onChange={event => setSort(event.target.value)}><option value="risk">Highest risk</option><option value="activity">Most requests</option><option value="path">Endpoint A–Z</option></select><button className="filter-reset" onClick={() => { setSearch(''); setMethod('all'); setShadow(false); setSort('risk') }}>Clear filters</button><span className="result-count mono" role="status">{rows.length} endpoints</span></div><div className="table-scroll"><table role="table" className="inventory-table"><thead><tr><th>Method / endpoint</th><th>Classification</th><th>Risk score</th><th>Auth observed</th><th>Requests</th><th>Last seen</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}><td data-label="Method / endpoint"><Link className="endpoint-link" href={inspect('endpoint', row.id)}><span className="method">{row.method}</span><code>{row.endpoint}</code><span>↗</span></Link></td><td data-label="Classification"><Badge value={row.is_shadow ? 'shadow' : 'managed'}/></td><td data-label="Risk score"><Risk score={row.risk_score}/></td><td data-label="Auth observed">{row.auth_type}</td><td data-label="Requests" className="mono">{row.total_calls}</td><td data-label="Last seen" className="mono nowrap">{date(row.last_seen)}</td></tr>)}</tbody></table></div>{!rows.length && <Empty>No endpoints match these filters.</Empty>}<div className="table-note">Inventory reflects persisted observations, including historical demo records. Authentication is an observed signal, not proof of enforced access control.</div></section>
+  const [method, setMethod] = useSessionValue('inventory-method','all')
+  const [service, setService] = useSessionValue('inventory-service','all')
+  const services = data.hierarchy.services
+  const domain = services.find(row=>row.id===service)
+  const rows = data.inventory.filter(row => row.endpoint.toLowerCase().includes(search.trim().toLowerCase()) && (!shadow || row.is_shadow) && (method === 'all' || row.method === method) && (!domain || domain.endpoints.some(endpoint=>endpoint.id===row.id))).sort((a, b) => sort === 'risk' ? b.risk_score - a.risk_score : sort === 'activity' ? b.total_calls - a.total_calls : a.endpoint.localeCompare(b.endpoint))
+  return <section className="panel"><div className="table-toolbar"><label className="search-field"><span>⌕</span><input aria-label="Search endpoints" placeholder="Search endpoints…" value={search} onChange={event => setSearch(event.target.value)}/></label><select aria-label="Service domain" value={service} onChange={event=>setService(event.target.value)}><option value="all">All service domains</option>{services.map(row=><option key={row.id} value={row.id}>{row.name} ({row.endpoint_count})</option>)}</select><select aria-label="HTTP method" value={method} onChange={event => setMethod(event.target.value)}><option value="all">All methods</option>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(value => <option key={value}>{value}</option>)}</select><label className="checkbox-label"><input type="checkbox" checked={shadow} onChange={event => setShadow(event.target.checked)}/>Shadow only</label><select aria-label="Sort endpoints" value={sort} onChange={event => setSort(event.target.value)}><option value="risk">Highest risk</option><option value="activity">Most requests</option><option value="path">Endpoint A–Z</option></select><button className="filter-reset" onClick={() => { setSearch(''); setMethod('all'); setShadow(false); setSort('risk'); setService('all') }}>Clear filters</button><span className="result-count mono" role="status">{rows.length} endpoints</span></div><div className="table-scroll"><table role="table" className="inventory-table"><thead><tr><th>Method / endpoint</th><th>Classification</th><th>Risk score</th><th>Auth observed</th><th>Requests</th><th>Last seen</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}><td data-label="Method / endpoint"><Link className="endpoint-link" href={inspect('endpoint', row.id)}><span className="method">{row.method}</span><code>{row.endpoint}</code><span>↗</span></Link></td><td data-label="Classification"><Badge value={row.is_shadow ? 'shadow' : 'managed'}/></td><td data-label="Risk score"><Risk score={row.risk_score}/></td><td data-label="Auth observed">{row.auth_type}</td><td data-label="Requests" className="mono">{row.total_calls}</td><td data-label="Last seen" className="mono nowrap">{date(row.last_seen)}</td></tr>)}</tbody></table></div>{!rows.length && <Empty>No endpoints match these filters.</Empty>}<div className="table-note">Inventory reflects persisted observations, including historical demo records. Authentication is an observed signal, not proof of enforced access control.</div></section>
 }
 
 function Traffic({ data }: { data: SecuritySnapshot }) {
-  const [search, setSearch] = useState('')
-  const [method, setMethod] = useState('all')
-  const [status, setStatus] = useState('all')
-  const [range, setRange] = useState('all')
+  const [search, setSearch] = useSessionValue('traffic-search','')
+  const [method, setMethod] = useSessionValue('traffic-method','all')
+  const [status, setStatus] = useSessionValue('traffic-status','all')
+  const [range, setRange] = useSessionValue('traffic-range','all')
   const rows = filterTraffic(data.traffic, { search, method, status, range })
   const buckets = trafficBuckets(rows)
   return <section className="panel">
@@ -75,7 +81,7 @@ function Alerts({ data }: { data: SecuritySnapshot }) {
 }
 
 function RiskIntelligence({ data }: { data: SecuritySnapshot }) {
-  const [viewMode, setViewMode] = useState<'hierarchy' | 'flat'>('hierarchy')
+  const [viewMode, setViewMode] = useSessionValue('risk-view','hierarchy')
   const hierarchy = data.hierarchy
   const platform = hierarchy?.platform
   const services = hierarchy?.services || []
@@ -256,14 +262,14 @@ function RiskIntelligence({ data }: { data: SecuritySnapshot }) {
   </div>
 }
 
-function ExecutionFlow({ path }: { data: SecuritySnapshot; path: string }) {
+function ExecutionFlow({ path, data }: { data: SecuritySnapshot; path: string }) {
   const query = new URLSearchParams(path.split('?')[1] || '')
   const initialAlertId = query.get('alert') || undefined
   const initialEventId = query.get('event') ? Number(query.get('event')) : undefined
 
   const [flow, setFlow] = useState<ExecutionFlowResponse | null>(null)
-  const [selectedAlert, setSelectedAlert] = useState<string | undefined>(initialAlertId)
-  const [selectedEvent, setSelectedEvent] = useState<number | undefined>(initialEventId)
+  const selectedAlert = initialAlertId
+  const selectedEvent = initialEventId
   const [selectedStageIndex, setSelectedStageIndex] = useState<number>(0)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -278,16 +284,13 @@ function ExecutionFlow({ path }: { data: SecuritySnapshot; path: string }) {
         if (active) {
           setFlow(res)
           // Sync dropdown to the server's auto-selected signal on first load
-          if (!selectedAlert && !selectedEvent) {
-            if (res.selected_alert_id) setSelectedAlert(res.selected_alert_id)
-            else if (res.selected_event_id) setSelectedEvent(res.selected_event_id)
-          }
+          // Keep auto-selection in the response, not in state that causes a duplicate fetch.
           // Auto-focus the most interesting stage (triggered detection or alert)
           const triggerIndex = res.stages.findIndex(s => {
             const st = s.status.toLowerCase()
             return st === 'flagged' || st === 'triggered' || st === 'critical' || st === 'high' || st === 'medium'
           })
-          setSelectedStageIndex(triggerIndex >= 0 ? triggerIndex : 0)
+          setSelectedStageIndex(current => selectedAlert || selectedEvent ? current : triggerIndex >= 0 ? triggerIndex : 0)
         }
       })
       .catch(err => {
@@ -300,7 +303,7 @@ function ExecutionFlow({ path }: { data: SecuritySnapshot; path: string }) {
       active = false
       controller.abort()
     }
-  }, [selectedAlert, selectedEvent])
+  }, [selectedAlert, selectedEvent, data.alerts[0]?.alert_id, data.traffic[0]?.id])
 
   const stages = flow?.stages || []
   const activeStage = stages[selectedStageIndex] || stages[0]
@@ -319,15 +322,15 @@ function ExecutionFlow({ path }: { data: SecuritySnapshot; path: string }) {
             <select
               id="flow-event-select"
               aria-label="Select event or alert to trace"
-              value={selectedAlert ? `alert:${selectedAlert}` : selectedEvent ? `traffic:${selectedEvent}` : ''}
+              value={selectedAlert ? `alert:${selectedAlert}` : selectedEvent ? `traffic:${selectedEvent}` : flow?.selected_alert_id ? `alert:${flow.selected_alert_id}` : flow?.selected_event_id ? `traffic:${flow.selected_event_id}` : ''}
               onChange={e => {
                 const val = e.target.value
                 if (val.startsWith('alert:')) {
-                  setSelectedAlert(val.replace('alert:', ''))
-                  setSelectedEvent(undefined)
+                  navigate(`/command-center/flow?alert=${encodeURIComponent(val.replace('alert:', ''))}`)
+                  setSelectedStageIndex(0)
                 } else if (val.startsWith('traffic:')) {
-                  setSelectedEvent(Number(val.replace('traffic:', '')))
-                  setSelectedAlert(undefined)
+                  navigate(`/command-center/flow?event=${encodeURIComponent(val.replace('traffic:', ''))}`)
+                  setSelectedStageIndex(0)
                 }
               }}
             >
@@ -460,7 +463,7 @@ function DemoControl({ onComplete }: { onComplete: () => void }) {
 export default function CommandCenter({ path }: { path: string }) {
   const section = path.split('?')[0].replace(/^\/command-center\/?/, '')
   const current = tabs.find(([key]) => key === section)
-  const { data, error, updated, refreshing, refresh } = useSecurityData()
+  const { data, error, updated, refreshing, refresh, signals } = useSecurityData()
   const subtitles: Record<string, string> = {
     '': 'The full picture. From exposure to evidence.',
     inventory: 'Every observed endpoint, including the undocumented.',
@@ -470,5 +473,5 @@ export default function CommandCenter({ path }: { path: string }) {
     flow: 'Step-by-step visual lineage from edge request to forensic evidence.',
     investigation: 'Follow a finding back to its originating request.'
   }
-  return <div className="command-shell command-editorial"><aside className="command-sidebar"><Link href="/" aria-label="Hyperion home"><Brand /></Link><label className="mobile-navigation">Workspace<select aria-label="Command center page" value={section} onChange={event => navigate(`/command-center${event.target.value ? '/'+event.target.value : ''}`)}>{tabs.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><div className="workspace-label eyebrow">SECURITY WORKSPACE</div><nav aria-label="Workspace navigation" style={{ '--nav-index': Math.max(0, tabs.findIndex(([key]) => key === section)) } as React.CSSProperties}><span className="workspace-nav-indicator" aria-hidden="true"/>{tabs.map(([key, label], index) => <Link key={key} href={`/command-center${key ? '/'+key : ''}`} className={section === key ? 'active' : ''} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}<i>↗</i></Link>)}</nav><div className="sidebar-bottom"><span className="mono">HYPERION / v1.0</span><p>Visibility. Behavior. Evidence.</p><Link href="/">← Return to product site</Link></div></aside><div className="command-body"><header className="command-topbar"><span className="eyebrow">HYPERION <b>/</b> COMMAND CENTER</span><span className={`connection ${error ? 'connection-error' : ''}`}><i/>{error ? 'Connection interrupted' : data ? 'Backend connected' : 'Connecting'}</span></header><main id="main" className="command-main"><div className="workspace-heading"><div><div className="eyebrow">OPERATIONAL INTELLIGENCE</div><h1>{current?.[1] || 'Workspace not found'}</h1><p>{subtitles[section]}</p></div><div className="refresh-control"><span className="mono">{updated ? `Synced ${updated.toLocaleTimeString()}` : 'Awaiting telemetry'}<small>REFRESHES EVERY 5 SECONDS</small></span><button className="icon-button" aria-label="Refresh telemetry" disabled={refreshing} onClick={refresh}><span className={refreshing ? 'spin' : ''}>↻</span></button></div></div>{error && <div className="error-banner" role="alert">{error} {data ? 'Showing the last successful snapshot.' : 'Check the configured backend service, then retry.'}<button onClick={refresh}>Retry ↗</button></div>}{section === '' && <DemoControl onComplete={refresh}/>}<span className="sr-only" role="status">{refreshing ? 'Refreshing telemetry' : 'Telemetry refresh complete'}</span>{!data ? <div className="panel empty-state" role="status">{error ? 'Telemetry unavailable.' : 'Reading persisted security telemetry…'}</div> : <div className="route-content" key={section}>{section === '' ? <Overview data={data}/> : section === 'inventory' ? <Inventory data={data}/> : section === 'traffic' ? <Traffic data={data}/> : section === 'alerts' ? <Alerts data={data}/> : section === 'risk' ? <RiskIntelligence data={data}/> : section === 'flow' ? <ExecutionFlow data={data} path={path}/> : section === 'investigation' ? <Investigation data={data} path={path}/> : <Empty><Link href="/command-center">Return to overview ↗</Link></Empty>}</div>}<footer className="workspace-footer"><span>OBSERVE → UNDERSTAND → INVESTIGATE</span><span>PERIODIC REFRESH · 5 SECOND INTERVAL</span></footer></main></div></div>
+  return <div className="command-shell command-editorial"><aside className="command-sidebar"><Link href="/" aria-label="Hyperion home"><Brand /></Link><label className="mobile-navigation">Workspace<select aria-label="Command center page" value={section} onChange={event => navigate(`/command-center${event.target.value ? '/'+event.target.value : ''}`)}>{tabs.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><div className="workspace-label eyebrow">SECURITY WORKSPACE</div><nav aria-label="Workspace navigation" style={{ '--nav-index': Math.max(0, tabs.findIndex(([key]) => key === section)) } as React.CSSProperties}><span className="workspace-nav-indicator" aria-hidden="true"/>{tabs.map(([key, label], index) => <Link key={key} href={`/command-center${key ? '/'+key : ''}`} className={section === key ? 'active' : ''} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}<i>↗</i></Link>)}</nav><div className="sidebar-bottom"><span className="mono">HYPERION / v1.0</span><p>Visibility. Behavior. Evidence.</p><Link href="/">← Return to product site</Link></div></aside><div className="command-body"><header className="command-topbar"><span className="eyebrow">HYPERION <b>/</b> COMMAND CENTER</span><span className={`connection ${error ? 'connection-error' : ''}`}><i/>{error ? 'Connection interrupted' : data ? 'Backend connected' : 'Connecting'}</span></header><main id="main" className="command-main"><div className="workspace-heading"><div><div className="eyebrow">OPERATIONAL INTELLIGENCE</div><h1>{current?.[1] || 'Workspace not found'}</h1><p>{subtitles[section]}</p></div><div className="refresh-control"><span className="mono">{updated ? `Synced ${updated.toLocaleTimeString()}` : 'Awaiting telemetry'}<small>REFRESHES EVERY 5 SECONDS</small></span><button className="icon-button" aria-label="Refresh telemetry" disabled={refreshing} onClick={refresh}><span className={refreshing ? 'spin' : ''}>↻</span></button></div></div>{error && <div className="error-banner" role="alert">{error} {data ? 'Showing the last successful snapshot.' : 'Check the configured backend service, then retry.'}<button onClick={refresh}>Retry ↗</button></div>}<details className="live-signal-disclosure" open={section === "" || section === "traffic"}><summary>Live Signal · {error ? "connection interrupted" : "observed telemetry"}</summary><LiveSignal state={signals} disconnected={Boolean(error)}/></details>{section === '' && <DemoControl onComplete={refresh}/>}<span className="sr-only" role="status">{refreshing ? 'Refreshing telemetry' : 'Telemetry refresh complete'}</span>{!data ? <div className="panel empty-state" role="status">{error ? 'Telemetry unavailable.' : 'Reading persisted security telemetry…'}</div> : <RouteView section={section}>{view => <>{view === '' ? <Overview data={data}/> : view === 'inventory' ? <Inventory data={data}/> : view === 'traffic' ? <Traffic data={data}/> : view === 'alerts' ? <Alerts data={data}/> : view === 'risk' ? <RiskIntelligence data={data}/> : view === 'flow' ? <ExecutionFlow data={data} path={path}/> : view === 'investigation' ? <Investigation data={data} path={path}/> : <Empty><Link href="/command-center">Return to overview ↗</Link></Empty>}</>}</RouteView>}<footer className="workspace-footer"><span>OBSERVE → UNDERSTAND → INVESTIGATE</span><span>PERIODIC REFRESH · 5 SECOND INTERVAL</span></footer></main></div></div>
 }

@@ -1,10 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { transformSync } from 'esbuild'
+import { buildSync } from 'esbuild'
+import { fileURLToPath } from 'node:url'
 
 const source = readFileSync(new URL('../src/graphics/environment.ts', import.meta.url), 'utf8')
-const code = transformSync(source, { loader: 'ts', format: 'esm' }).code
+const code = buildSync({entryPoints:[fileURLToPath(new URL('../src/graphics/environment.ts',import.meta.url))],bundle:true,format:'esm',write:false}).outputFiles[0].text
 const { createEnvironment } = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
 
 function setup({ supported = true, reduced = false } = {}) {
@@ -89,4 +90,19 @@ test('context loss switches to fallback and cancels pending work', () => {
   assert.equal(modes.at(-1), 'fallback')
   assert.equal(s.queue.size, 0)
   dispose()
+})
+test('observed batches drive separate shader accents and disconnection cancels them',()=>{
+ const s=setup();const dispose=createEnvironment(s.canvas,()=>{})
+ s.windowEvents.get('hyperion-observation')({detail:{signals:[{kind:'finding',severity:'critical'}]}})
+ assert.equal(s.canvas.dataset.signalBatches,'1');assert.equal(s.canvas.dataset.signalTone,'3')
+ s.windowEvents.get('hyperion-observation')({detail:{signals:[]}})
+ assert.equal(s.canvas.dataset.signalBatches,'1')
+ s.windowEvents.get('hyperion-observation')({detail:{disconnected:true,signals:[]}})
+ s.step(20);dispose();assert.equal(s.windowEvents.size,0)
+})
+test('reduced motion never queues event accent animation',()=>{
+ const s=setup({reduced:true});const dispose=createEnvironment(s.canvas,()=>{})
+ s.windowEvents.get('hyperion-observation')({detail:{signals:[{kind:'traffic'}]}})
+ assert.equal(s.canvas.dataset.signalBatches,undefined)
+ s.step(20);assert.equal(s.queue.size,0);dispose()
 })

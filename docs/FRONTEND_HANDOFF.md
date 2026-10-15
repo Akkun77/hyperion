@@ -1,3 +1,82 @@
+# Unified cinematic workspace / Live Signal
+
+Implemented 2026-10-16 on `codex/hyperion-unified-live-signal`, based on editorial checkpoint `5b0356062e2980d365fde9c55defd3aaf48e42e0`. No merge into release or main; no dependencies added.
+
+## Navigation diagnosis and integration corrections
+
+The reported homepage CTA and category-click failure did not reproduce in the permitted browser. Both desktop and mobile homepage Command Center links opened the workspace; category routes and browser back/forward succeeded. The persistent environment has `pointer-events: none`; initialization is also non-interactive. Do not describe an unobserved overlay fault as fixed.
+
+The Link primitive now leaves external URLs, new-tab targets, downloads, hash links and modified clicks to the browser. Direct tests exercise actual click handlers. Execution selection previously lived outside URL history and auto-selection triggered another request. It now derives from the route query, keeps server auto-selection in the response, and reloads its available events when observed IDs change. Stage selection survives ordinary polls. Browser history restored alert selections correctly.
+
+Inventory retains its ledger, adds backend-derived service-domain filtering, and preserves search/method/sort/service in optional session storage. Traffic preserves search/method/status/range. Risk preserves hierarchy/flat mode. Existing Findings preserves its filters and selected expansion. No request payloads, credentials or tokens are written to session storage.
+
+## Live Signal contract
+
+Uses the existing single workspace snapshot poll, not another subscription or endpoint. No SSE/WebSocket. The seven snapshot requests remain batched, non-overlapping, cancellable and visibility-aware. Traffic loads at most 1,000 records; alerts at most 100; this is not a lossless event transport.
+
+- Initial history establishes a baseline without event animation. Baseline traces are explicitly marked.
+- Numeric SQLite traffic/alert ID high-water marks deduplicate subsequent responses, including IDs leaving/re-entering the loaded window.
+- New requests/findings must be timestamped after baseline and no more than 30 seconds old (up to 5 seconds future clock tolerance). UTC timestamps without offsets are interpreted as UTC. Large client/server clock differences can suppress animation; records remain visible in normal views.
+- New shadow endpoint IDs and changed existing endpoint scores retain actual backend references/values. No invented factors or counts.
+- One visual accent per successful changed poll batch. At most 24 signal entries enter a batch, 18 remain in memory, 6 are shown on desktop / 3 on mobile. High-volume activity is coalesced, not replayed as an animation queue. Loaded request counts are distinguished from additional/historical rows.
+- Traffic/score changes use emerald; new findings or shadow discovery amber; high/critical findings red. Each trace links to actual event/finding/endpoint evidence or the risk view.
+- Failure pauses accents and retains stale observations. Recovery establishes a fresh baseline; catch-up never animates. The SVG mounts a pulse only for a nonempty new batch, avoiding replay on reconnect. Unit tests cover this edge case.
+- The primary loop retains slow ambient rotation and its localized path-travel highlight. These continuous effects are explicitly labeled ambient, not activity. A separate one-shot WebGL accent consumes reconciled batches. No per-frame React updates. Listeners/RAF/GPU cleanup, hidden-page suspension, reduced motion and fallback are preserved.
+- The preview API is a local demo environment containing controlled simulations. Existing records have no reliable per-record provenance field; the UI says so. No simulation runs automatically.
+
+## Identity and visual foundation
+
+One original (2,3) centerline family supplies the WebGL sculpture, small SVG mark, animated loader, fallback, gateway illustration and favicon. The favicon is a generated vector centerline, not a screenshot. Loading is now 3050ms (previous editorial milestone 2050ms), once per browser session, skipped for OS reduced motion. Internal navigation does not replay it. The loader is presentation timing, not a claim of completed networking.
+
+Marketing layout remains approved and unchanged except the gateway illustration symbol. Operational views use neutral near-black, open sections, restrained text navigation, thin rules and fewer tinted boxes. Seven-stage execution now wraps into a grid rather than requiring a wide horizontal strip; its actual seven stages and metadata remain. Native mobile navigation and all detailed filters/timestamps/auth observations/evidence remain available. Route exit is 120ms, incoming masked reveal 320ms; reduced motion switches directly. Rapid navigation cancels stale transitions.
+
+References were inspected in the permitted browser: Hyperion home, Press/News category selection, and Yuvrik home. Observable cues were the thin category rule, dark negative space, image/text pairing, large clean typographic hierarchy and compact labels. Exact hover curves and transition timings were not measurable; no source assets or branding were copied.
+
+## Self-monitoring
+
+The prior checkpoint already fixed the missing `/api/risk-hierarchy` and `/api/execution-flow` exclusions. No further backend implementation change was needed here. A new regression exercises 40 dashboard reads after a business request and proves counts, alerts, inventory-derived KPIs and in-memory detector baselines stay unchanged. A similarly named non-control route remains monitored. Application HTTP/access diagnostics remain enabled.
+
+Actual running preview: 24 dashboard/API reads left 806 requests and 6 findings unchanged. Old self-observation records, including the historical false shadow hierarchy route, are retained. This work does not purge/reclassify historical SQLite records.
+
+## Executed validation
+
+- Frontend: 37 tests passed; TypeScript and Vite production build passed.
+- Python source compilation passed; 12 backend integration tests and 12 security-engine tests passed, using isolated temporary databases. Existing httpx/datetime deprecation warnings remain.
+- Browser desktop: homepage CTA; category navigation; direct URL; back/forward; service/shadow filters; path sorting; traffic search/time-range empty state; finding category/severity empty state and expansion; hierarchy expansion/flat mode; execution alert selection, stages and history; investigation evidence; refresh; actual connection loss and automatic recovery.
+- Browser mobile at 390px: dropdown navigation, traffic signal layout, inventory ledger, hierarchy, seven-stage flow, Findings filtering/expansion and Investigation evidence. Settled document widths were 375px with 375px content, without horizontal overflow on checked views. Overview also matched viewport width.
+- Real WebGL renderer/frame advancement observed. Explicit reduced motion held the canvas at frame 0 across navigation; Light visuals showed the shared loop fallback. OS reduced motion, context loss and unavailable WebGL are additionally tested with the renderer harness. No continuous performance benchmark or quantitative CLS measurement is claimed.
+- Controlled simulation was explicitly run on the separate design-preview SQLite copy: 806→835 requests, 6→10 findings. One red observed batch; repeated polls did not increase its revision. New scraping finding #10 linked to persisted request #833 through a clicked trace.
+- One explicit controlled `/api/v3/design-signal-probe` request on that same copy returned HTTP 404, persisted as event #836 and new endpoint #7. Its amber shadow trace was observed. It is test traffic, not production activity.
+- The task-owned backend was briefly stopped and restarted on the same isolated copy. The UI showed connection interruption/stale retained traces; automatic recovery renewed the baseline without increasing the two observed pulse batches. Other servers and original databases were not stopped or reset.
+
+## Launch / current preview
+
+Current frontend: `http://127.0.0.1:5176/command-center/traffic`, configured to `http://127.0.0.1:8012`. It uses the separate `design-preview.db` copy outside Git, not the original project database. Existing old servers on other ports may be stale.
+
+For a normal launch, use two PowerShell terminals from the repository root. Select an existing private SQLite file with `HYPERION_DATABASE_PATH` if needed; omission uses the existing backend database. Never reset it merely to launch.
+
+```powershell
+# Terminal 1 — repository root
+$env:HYPERION_BASE_URL = 'http://127.0.0.1:8000'
+python -m uvicorn app:app --app-dir backend --host 127.0.0.1 --port 8000
+
+# Terminal 2 — repository root
+$env:VITE_API_BASE = 'http://127.0.0.1:8000'
+npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+Open `http://127.0.0.1:5173/command-center/traffic`. If a port is already occupied, use a free explicit port and keep VITE_API_BASE/HYPERION_BASE_URL aligned; do not terminate unrelated servers.
+
+## Remaining boundaries
+
+Polling is not streaming. Signal animation intentionally omits historical/reconnect catch-up and can coalesce or omit records outside the loaded bounds; use detailed evidence views for inspection. Per-record simulation labeling requires a future provenance design; no schema was added. Existing historical self-monitoring rows remain. Hover timing, frame pacing and initial loader duration were not quantitatively benchmarked. Secrets, databases, logs and build outputs must remain excluded from publishing.
+
+## Archived earlier handoff (2026-10-15, retained verbatim)
+
+The implementation record above supersedes historical counts, branding and route lists below.
+
+---
+
 # HYPERION cinematic frontend handoff
 
 Verified on 15 October 2026. Continue from this implementation; the original React/FastAPI project and database remain in place.

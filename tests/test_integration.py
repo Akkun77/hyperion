@@ -55,6 +55,24 @@ class IntegratedPlatformTests(unittest.TestCase):
                          {"/api/v2/debug", "/api/v1/admin/export"})
         self.assertFalse(next(i for i in items if i["endpoint"] == "/api/v1/users/{id}")["is_shadow"])
 
+    def test_repeated_dashboard_refresh_preserves_business_counts_and_detection_baselines(self):
+        self.request_user()
+        before = self.client.get('/api/governance/kpis').json()
+        baseline = {key: list(value) for key, value in app.ip_request_timestamps.items()}
+        buffer_size = len(app.hyperion_event_buffer)
+        for _ in range(4):
+            for path in ['/api/health', '/api/governance/kpis', '/api/governance/inventory',
+                         '/api/governance/alerts', '/api/traffic', '/api/traffic/1', '/api/alerts',
+                         '/api/risk-scores', '/api/risk-hierarchy', '/api/execution-flow?event_id=1']:
+                self.assertEqual(self.client.get(path).status_code, 200, path)
+        self.assertEqual(self.client.get('/api/governance/kpis').json(), before)
+        self.assertEqual(dict(app.ip_request_timestamps), baseline)
+        self.assertEqual(len(app.hyperion_event_buffer), buffer_size)
+        self.assertEqual(self.client.get('/api/alerts').json(), [])
+        # A similarly named business route is still monitored; exclusion is exact.
+        self.client.get('/api/risk-hierarchy/business-probe')
+        self.assertEqual(self.client.get('/api/governance/kpis').json()['total_requests_observed'], 2)
+
     def test_bola_has_persisted_evidence_and_explained_risk(self):
         self.assertEqual(self.request_user("user_202").status_code, 200)
         alert = self.client.get("/api/alerts").json()[0]

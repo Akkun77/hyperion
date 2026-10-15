@@ -3,6 +3,7 @@ import AnimatedEnvironment from './components/AnimatedEnvironment'
 import { Mark } from './components/Brand'
 import Landing from './pages/Landing'
 import './workspace/design-foundation.css'
+import './workspace/unified-workspace.css'
 import { Link, usePath } from './router'
 
 const CommandCenter = lazy(() => import('./pages/CommandCenter'))
@@ -20,7 +21,7 @@ export default function App() {
     const timer = window.setTimeout(() => {
       setIntro(false)
       try { sessionStorage.setItem('hyperion-initialized', 'true') } catch { /* optional */ }
-    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 2050)
+    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 3050)
     return () => window.clearTimeout(timer)
   }, [])
   useEffect(() => {
