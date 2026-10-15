@@ -1,14 +1,7 @@
 /* Scoped operational refinements; the approved marketing/WebGL design is unchanged. */
-.command-shell{--rail:208px;--line:#29403499}
-.command-shell .command-sidebar{width:var(--rail);padding:28px 16px;background:#090f0deb;backdrop-filter:blur(18px)}
-.command-shell .command-body{margin-left:var(--rail);width:calc(100% - var(--rail));min-width:0}
-.command-shell .command-sidebar .brand{font-size:17px}
-.command-shell .workspace-label{margin:42px 12px 18px;letter-spacing:.14em;font-size:8px}
-.command-shell .command-sidebar nav{display:flex;flex-direction:column;gap:5px}
-.command-shell .command-sidebar nav>a{padding:12px;gap:12px;font-size:11px;border:1px solid transparent;border-radius:5px;color:#93ac9f}
-.command-shell .command-sidebar nav>a.active{color:#c9f9df;background:linear-gradient(90deg,#22533966,#15302344);border-color:#41684f;box-shadow:inset 2px 0 #64e7a7}
-.command-shell .command-sidebar nav>a:hover{background:#1b3527;color:#e7f6ee}
-.command-shell .command-sidebar nav>a>i{display:none}
+.command-shell{--rail:0px;--line:#29403499;width:100%;min-height:100vh}
+.command-shell .command-sidebar{display:none}
+.command-shell .command-body{margin-left:0;width:100%;min-width:0}
 .command-shell .command-topbar{height:62px}
 .command-shell .command-main{max-width:1600px;margin:auto;padding:28px 32px}
 .command-shell .workspace-heading{margin-bottom:25px}

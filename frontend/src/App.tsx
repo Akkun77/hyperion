@@ -7,6 +7,8 @@ import './workspace/unified-workspace.css'
 import './workspace/product-workflows.css'
 import { Link, usePath } from './router'
 
+import BrandReveal from './components/BrandReveal'
+
 const CommandCenter = lazy(() => import('./pages/CommandCenter'))
 const Watch = lazy(() => import('./pages/Watch'))
 
@@ -21,7 +23,7 @@ export default function App() {
   })
   const finishIntro = () => {setIntro(false);try{sessionStorage.setItem('hyperion-initialized','true')}catch{/* optional */}}
   useEffect(() => {
-    const timer = window.setTimeout(finishIntro, window.matchMedia('(prefers-reduced-motion: reduce)').matches || operational ? 0 : 1200)
+    const timer = window.setTimeout(finishIntro, window.matchMedia('(prefers-reduced-motion: reduce)').matches || operational ? 0 : 2600)
     const skip=(event:KeyboardEvent)=>{if(event.key==='Escape')finishIntro()}
     window.addEventListener('keydown',skip);window.addEventListener('pointerdown',finishIntro,{once:true})
     return () => {window.clearTimeout(timer);window.removeEventListener('keydown',skip);window.removeEventListener('pointerdown',finishIntro)}
@@ -42,7 +44,16 @@ export default function App() {
   return <>
     <a className="skip-link" href="#main">Skip to content</a>
     <AnimatedEnvironment subdued={operational} visualMode={visualMode} />
-    {intro && <><div className="initialization" aria-hidden="true"><Mark animated /><span>HYPERION</span><small>API SECURITY SYSTEMS</small></div><button className="intro-skip" onClick={finishIntro}>Skip introduction ↗</button></>}
+    {intro && (
+      <>
+        <div className="initialization" aria-hidden="true" style={{ display: 'none' }}>
+          <Mark animated />
+          <span>HYPERION</span>
+          <small>API SECURITY SYSTEMS</small>
+        </div>
+        <BrandReveal onComplete={finishIntro} />
+      </>
+    )}
     {known ? operational
       ? <Suspense fallback={<main id="main" className="workspace-loading">Opening command center…</main>}><CommandCenter path={path} /></Suspense>
       : pathname === '/watch' ? <Suspense fallback={<main id="main" className="workspace-loading">Opening controlled experience…</main>}><Watch/></Suspense> : <Landing platform={pathname === '/platform'} visualMode={visualMode} onVisualMode={setVisualMode} />

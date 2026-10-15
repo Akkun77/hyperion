@@ -343,5 +343,145 @@ export default function CommandCenter({ path }: { path: string }) {
     investigation: 'Follow a finding back to its originating request.',
     connect: 'Document your authorized API. Know exactly what is — and is not — monitored.'
   }
-  return <div className="command-shell command-editorial"><aside className="command-sidebar"><Link href="/" aria-label="Hyperion home"><Brand /></Link><label className="mobile-navigation">Workspace<select aria-label="Command center page" value={section} onChange={event => navigate(`/command-center${event.target.value ? '/'+event.target.value : ''}`)}>{tabs.map(([key, label]) => <option key={key} value={key}>{label}</option>)}<option value="connect">Connect API</option></select></label><div className="workspace-label eyebrow">SECURITY WORKSPACE</div><nav aria-label="Workspace navigation" style={{ '--nav-index': Math.max(0, tabs.findIndex(([key]) => key === section)) } as React.CSSProperties}>{section !== 'connect' && <span className="workspace-nav-indicator" aria-hidden="true"/>}{tabs.map(([key, label], index) => <Link key={key} href={`/command-center${key ? '/'+key : ''}`} className={section === key ? 'active' : ''} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}<i>↗</i></Link>)}</nav><div className="sidebar-bottom"><span className="mono">HYPERION / v1.0</span><p>Visibility. Behavior. Evidence.</p><Link href="/">← Return to product site</Link></div></aside><div className="command-body"><header className="command-topbar"><span className="eyebrow">HYPERION <b>/</b> COMMAND CENTER</span><div className="workspace-actions"><Link href="/command-center/connect">Connect API ↗</Link><Link href="/watch">Watch Hyperion work ↗</Link></div><span className={`connection ${error ? 'connection-error' : ''}`}><i/>{error ? 'Connection interrupted' : data ? 'Backend connected' : 'Connecting'}</span></header><main id="main" className="command-main"><div className="workspace-heading"><div><div className="eyebrow">OPERATIONAL INTELLIGENCE</div><h1>{current?.[1] || 'Workspace not found'}</h1><p>{subtitles[section]}</p></div><div className="refresh-control"><span className="mono">{updated ? `Synced ${updated.toLocaleTimeString()}` : 'Awaiting telemetry'}<small>REFRESHES EVERY 5 SECONDS</small></span><button className="icon-button" aria-label="Refresh telemetry" disabled={refreshing} onClick={refresh}><span className={refreshing ? 'spin' : ''}>↻</span></button></div></div>{error && <div className="error-banner" role="alert">{error} {data ? 'Showing the last successful snapshot.' : 'Check the configured backend service, then retry.'}<button onClick={refresh}>Retry ↗</button></div>}<details className="live-signal-disclosure" open={section === ""}><summary>Live Signal · {error ? "connection interrupted" : "observed telemetry"}</summary><LiveSignal state={signals} disconnected={Boolean(error)}/></details>{section === '' && <DemoControl onComplete={refresh}/>}<span className="sr-only" role="status">{refreshing ? 'Refreshing telemetry' : 'Telemetry refresh complete'}</span>{!data ? <div className="panel empty-state" role="status">{error ? 'Telemetry unavailable.' : 'Reading persisted security telemetry…'}</div> : <RouteView section={section}>{view => <>{view === '' ? <Overview data={data}/> : view === 'connect' ? <ConnectAPI/> : view === 'inventory' ? <Inventory data={data}/> : view === 'traffic' ? <Traffic data={data}/> : view === 'alerts' ? <Alerts data={data}/> : view === 'risk' ? <RiskIntelligence data={data}/> : view === 'flow' ? <ExecutionFlow data={data} path={path}/> : view === 'investigation' ? <Investigation data={data} path={path}/> : <Empty><Link href="/command-center">Return to overview ↗</Link></Empty>}</>}</RouteView>}<footer className="workspace-footer"><span>OBSERVE → UNDERSTAND → INVESTIGATE</span><span>PERIODIC REFRESH · 5 SECOND INTERVAL</span></footer></main></div></div>
+  return (
+    <div className="command-shell command-editorial">
+      <header className="command-top-nav" role="banner">
+        <div className="top-nav-inner">
+          <div className="top-nav-left">
+            <Link href="/" className="top-nav-brand" aria-label="Hyperion home">
+              <Brand compact />
+            </Link>
+            <span className="top-nav-badge mono" aria-hidden="true">COMMAND CENTER</span>
+          </div>
+
+          <nav
+            className="top-nav-tabs"
+            aria-label="Workspace navigation"
+            style={{ '--nav-index': Math.max(0, tabs.findIndex(([key]) => key === section)) } as React.CSSProperties}
+          >
+            {tabs.map(([key, label, symbol]) => {
+              const active = section === key
+              return (
+                <Link
+                  key={key}
+                  href={`/command-center${key ? '/' + key : ''}`}
+                  className={`top-nav-tab ${active ? 'active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <span className="tab-glyph" aria-hidden="true">{symbol}</span>
+                  <span className="tab-label">{label}</span>
+                  {active && <span className="top-nav-active-line" aria-hidden="true" />}
+                </Link>
+              )
+            })}
+          </nav>
+
+          <div className="top-nav-right">
+            <div className="top-nav-actions">
+              <Link
+                href="/command-center/connect"
+                className={`top-nav-pill ${section === 'connect' ? 'active' : ''}`}
+              >
+                Connect API ↗
+              </Link>
+              <Link href="/watch" className="top-nav-pill">
+                Watch ↗
+              </Link>
+            </div>
+
+            <span className={`connection ${error ? 'connection-error' : ''}`}>
+              <i />
+              {error ? 'Connection interrupted' : data ? 'Backend connected' : 'Connecting'}
+            </span>
+
+            <label className="mobile-navigation">
+              <span className="sr-only">Workspace</span>
+              <select
+                aria-label="Command center page"
+                value={section}
+                onChange={event => navigate(`/command-center${event.target.value ? '/' + event.target.value : ''}`)}
+              >
+                {tabs.map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+                <option value="connect">Connect API</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </header>
+
+      <div className="command-body">
+        <main id="main" className="command-main">
+          <div className="workspace-heading">
+            <div>
+              <div className="eyebrow">OPERATIONAL INTELLIGENCE</div>
+              <h1>{current?.[1] || 'Workspace not found'}</h1>
+              <p>{subtitles[section]}</p>
+            </div>
+            <div className="refresh-control">
+              <span className="mono">
+                {updated ? `Synced ${updated.toLocaleTimeString()}` : 'Awaiting telemetry'}
+                <small>REFRESHES EVERY 5 SECONDS</small>
+              </span>
+              <button
+                className="icon-button"
+                aria-label="Refresh telemetry"
+                disabled={refreshing}
+                onClick={refresh}
+              >
+                <span className={refreshing ? 'spin' : ''}>↻</span>
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-banner" role="alert">
+              {error} {data ? 'Showing the last successful snapshot.' : 'Check the configured backend service, then retry.'}
+              <button onClick={refresh}>Retry ↗</button>
+            </div>
+          )}
+
+          <details className="live-signal-disclosure" open={section === ''}>
+            <summary>Live Signal · {error ? 'connection interrupted' : 'observed telemetry'}</summary>
+            <LiveSignal state={signals} disconnected={Boolean(error)} />
+          </details>
+
+          {section === '' && <DemoControl onComplete={refresh} />}
+
+          <span className="sr-only" role="status">
+            {refreshing ? 'Refreshing telemetry' : 'Telemetry refresh complete'}
+          </span>
+
+          {!data ? (
+            <div className="panel empty-state" role="status">
+              {error ? 'Telemetry unavailable.' : 'Reading persisted security telemetry…'}
+            </div>
+          ) : (
+            <RouteView section={section}>
+              {view => (
+                <>
+                  {view === '' ? <Overview data={data} /> :
+                   view === 'connect' ? <ConnectAPI /> :
+                   view === 'inventory' ? <Inventory data={data} /> :
+                   view === 'traffic' ? <Traffic data={data} /> :
+                   view === 'alerts' ? <Alerts data={data} /> :
+                   view === 'risk' ? <RiskIntelligence data={data} /> :
+                   view === 'flow' ? <ExecutionFlow data={data} path={path} /> :
+                   view === 'investigation' ? <Investigation data={data} path={path} /> :
+                   <Empty><Link href="/command-center">Return to overview ↗</Link></Empty>}
+                </>
+              )}
+            </RouteView>
+          )}
+
+          <footer className="workspace-footer">
+            <span>OBSERVE → UNDERSTAND → INVESTIGATE</span>
+            <Link href="/" className="return-link">← Return to product site</Link>
+            <span>PERIODIC REFRESH · 5 SECOND INTERVAL</span>
+          </footer>
+        </main>
+      </div>
+    </div>
+  )
 }

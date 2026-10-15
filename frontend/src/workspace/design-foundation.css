@@ -8,8 +8,8 @@
 .initialization>.loop-emblem{width:88px;height:88px;animation:loop-emerge .8s both}
 .initialization>span{animation:wordmark-emerge .7s .25s both;letter-spacing:.3em}
 .initialization>small{animation:wordmark-emerge .7s .4s both}
-.command-shell.command-editorial{--rail:210px;--paper:#f0f3f1;--soft:#a2afa8;--signal:#71dab0;--hairline:#b5d9c31d;--space-unit:8px;color:var(--paper)}
-.command-shell.command-editorial .command-sidebar{padding:32px 22px;background:#090f0de8;backdrop-filter:none;border-right:1px solid var(--hairline)}
+.command-shell.command-editorial{--rail:0px;--paper:#f0f3f1;--soft:#a2afa8;--signal:#71dab0;--hairline:#b5d9c31d;--space-unit:8px;color:var(--paper)}
+.command-shell.command-editorial .command-sidebar{display:none}
 .command-shell.command-editorial .brand{font-size:16px;letter-spacing:.17em}
 .command-shell.command-editorial .brand-mark{width:33px;height:33px}
 .command-shell.command-editorial .brand small{font-size:5px;letter-spacing:.2em}
