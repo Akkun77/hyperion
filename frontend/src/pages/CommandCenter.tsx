@@ -282,9 +282,17 @@ function ExecutionFlow({ path }: { data: SecuritySnapshot; path: string }) {
       .then(res => {
         if (active) {
           setFlow(res)
-          const triggerIndex = res.stages.findIndex(s => s.status.toLowerCase() === 'flagged' || s.status.toLowerCase() === 'created' || s.status.toLowerCase() === 'anomaly')
-          if (triggerIndex >= 0) setSelectedStageIndex(triggerIndex)
-          else setSelectedStageIndex(0)
+          // Sync dropdown to the server's auto-selected signal on first load
+          if (!selectedAlert && !selectedEvent) {
+            if (res.selected_alert_id) setSelectedAlert(res.selected_alert_id)
+            else if (res.selected_event_id) setSelectedEvent(res.selected_event_id)
+          }
+          // Auto-focus the most interesting stage (triggered detection or alert)
+          const triggerIndex = res.stages.findIndex(s => {
+            const st = s.status.toLowerCase()
+            return st === 'flagged' || st === 'triggered' || st === 'critical' || st === 'high' || st === 'medium'
+          })
+          setSelectedStageIndex(triggerIndex >= 0 ? triggerIndex : 0)
         }
       })
       .catch(err => {
