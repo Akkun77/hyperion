@@ -46,6 +46,10 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     uniform float uTime;
     uniform float uSignalAge;
     uniform float uSignalTone;
+    uniform float uDemoActive;
+    uniform float uDemoArc;
+    uniform float uDemoFinding;
+    uniform float uDemoTone;
     void main() {
       vec3 n=normalize(vNormal);
       vec3 view=normalize(vec3(0.,0.,4.5)-vPosition);
@@ -72,6 +76,27 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       float eventPulse=exp(-pow(eventDistance/.22,2.))*max(0.,1.-uSignalAge/2.6);
       vec3 eventColor=uSignalTone>2.5 ? vec3(1.,.18,.09) : uSignalTone>1.5 ? vec3(1.,.59,.16) : vec3(.4,1.,.72);
       color+=eventColor*eventPulse*.95;
+
+      // Living Security Core: Request signal traveling through actual 3D loop geometry
+      if (uDemoActive > 0.5) {
+        float dDist = abs(vArc - uDemoArc);
+        dDist = min(dDist, 6.2831853 - dDist);
+        float dHead = exp(-pow(dDist / 0.12, 2.0));
+        float dTrailDist = mod(uDemoArc - vArc + 6.2831853, 6.2831853);
+        float dTrail = exp(-dTrailDist / 0.28) * (1.0 - smoothstep(0.0, 0.72, dTrailDist));
+        vec3 dColor = uDemoTone > 2.5 ? vec3(1.0, 0.32, 0.18) : uDemoTone > 1.5 ? vec3(1.0, 0.65, 0.20) : vec3(0.42, 1.0, 0.75);
+        color += dColor * (dHead * 1.7 + dTrail * 0.8) * (0.4 + 0.6 * diffuse);
+
+        // Breach sector illumination on confirmed security finding
+        if (uDemoFinding > 0.5) {
+          float breachDist = abs(vArc - 4.45);
+          breachDist = min(breachDist, 6.2831853 - breachDist);
+          float breachGlow = exp(-pow(breachDist / 0.45, 2.0));
+          vec3 coralAlert = vec3(1.0, 0.34, 0.18);
+          float breath = 0.7 + 0.3 * sin(uTime * 4.0);
+          color += coralAlert * breachGlow * breath * 1.35;
+        }
+      }
       gl_FragColor=vec4(color,1.);
     }`
   const shaders: WebGLShader[] = []
@@ -124,6 +149,53 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   const parallax = gl.getUniformLocation(program, 'uPointer')
   const signalAge = gl.getUniformLocation(program, 'uSignalAge')
   const signalTone = gl.getUniformLocation(program, 'uSignalTone')
+  const demoActiveLoc = gl.getUniformLocation(program, 'uDemoActive')
+  const demoArcLoc = gl.getUniformLocation(program, 'uDemoArc')
+  const demoFindingLoc = gl.getUniformLocation(program, 'uDemoFinding')
+  const demoToneLoc = gl.getUniformLocation(program, 'uDemoTone')
+
+  const STAGE_ARCS = [0.0, 0.65, 1.55, 2.45, 3.5, 4.45, 5.35, 6.2]
+  const STAGE_ID_MAP: Record<string, number> = {
+    'incoming-request': 1,
+    'endpoint-catalog': 2,
+    'traffic-audit': 3,
+    'detector-eval': 4,
+    'alert-dispatch': 5,
+    'risk-recalculation': 6,
+    'evidence-link': 7
+  }
+
+  let demoActive = 0
+  let demoStage = 0
+  let demoFinding = 0
+  let demoTone = 1.0
+  let demoArc = 0.0
+  let targetDemoArc = 0.0
+
+  function handleDemoState(event: Event) {
+    const detail = (event as CustomEvent<any>).detail || {}
+    if (detail.reset) {
+      demoActive = 0; demoStage = 0; demoFinding = 0; demoTone = 1.0
+      demoArc = 0.0; targetDemoArc = 0.0
+      canvas.dataset.demoActive = '0'
+      canvas.dataset.demoStage = '0'
+      return
+    }
+    demoActive = 1
+    const stageNum = typeof detail.stage === 'number' ? detail.stage :
+                     detail.stage ? (STAGE_ID_MAP[detail.stage] ?? 1) : 1
+    demoStage = stageNum
+    targetDemoArc = STAGE_ARCS[Math.min(stageNum, 7)] || 0.0
+
+    const isFinding = detail.finding || detail.signals?.some((s: any) => s.kind === 'finding') || stageNum >= 5
+    demoFinding = isFinding ? 1 : 0
+    demoTone = isFinding ? 3.0 : stageNum >= 4 ? 2.0 : 1.0
+
+    canvas.dataset.demoActive = '1'
+    canvas.dataset.demoStage = String(demoStage)
+    canvas.dataset.demoFinding = String(demoFinding)
+  }
+
   let observedAt = -10000
   let tone = 1
   function observation(event: Event) {
@@ -168,6 +240,21 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       gl!.uniform2f(parallax, pointer[0], pointer[1])
       gl!.uniform1f(signalAge, reduced.matches || forceReduced ? 100 : (now-observedAt)/1000)
       gl!.uniform1f(signalTone, tone)
+
+      if (demoActive > 0.5) {
+        const diff = targetDemoArc - demoArc
+        demoArc += diff * 0.14
+        gl!.uniform1f(demoActiveLoc, 1.0)
+        gl!.uniform1f(demoArcLoc, demoArc)
+        gl!.uniform1f(demoFindingLoc, demoFinding)
+        gl!.uniform1f(demoToneLoc, demoTone)
+      } else {
+        gl!.uniform1f(demoActiveLoc, 0.0)
+        gl!.uniform1f(demoArcLoc, 0.0)
+        gl!.uniform1f(demoFindingLoc, 0.0)
+        gl!.uniform1f(demoToneLoc, 1.0)
+      }
+
       gl!.clear(gl!.COLOR_BUFFER_BIT | gl!.DEPTH_BUFFER_BIT)
       gl!.drawArrays(gl!.TRIANGLES, 0, params.length/2)
       canvas.dataset.frames = String(frames)
@@ -197,6 +284,8 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   canvas.addEventListener('webglcontextlost', lost)
   window.addEventListener('hyperion-observation', observation)
   window.addEventListener('hyperion-demo-stage', observation)
+  window.addEventListener('hyperion-demo-stage', handleDemoState)
+  window.addEventListener('hyperion-demo-reset', handleDemoState)
   resize(); setMode('webgl'); resume()
   return () => {
     stopped = true; cancelAnimationFrame(frame); observer.disconnect()
@@ -206,6 +295,8 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     canvas.removeEventListener('webglcontextlost', lost)
     window.removeEventListener('hyperion-observation', observation)
     window.removeEventListener('hyperion-demo-stage', observation)
+    window.removeEventListener('hyperion-demo-stage', handleDemoState)
+    window.removeEventListener('hyperion-demo-reset', handleDemoState)
     shaders.forEach(shader => gl.deleteShader(shader))
     gl.deleteBuffer(buffer); gl.deleteProgram(program)
   }

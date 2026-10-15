@@ -29,8 +29,9 @@ export default function App() {
     return () => {window.clearTimeout(timer);window.removeEventListener('keydown',skip);window.removeEventListener('pointerdown',finishIntro)}
   }, [])
   useEffect(() => {
-    document.title = operational ? 'Command Center — HYPERION' : 'HYPERION — Beyond Visibility'
-  }, [operational])
+    document.title = operational ? 'Command Center — HYPERION' : pathname === '/watch' ? 'Watch Hyperion Work — HYPERION' : 'HYPERION — Beyond Visibility'
+    document.documentElement.dataset.route = pathname === '/watch' ? 'watch' : operational ? 'command-center' : 'home'
+  }, [operational, pathname])
   useEffect(() => {
     document.documentElement.dataset.visualMotion = visualMode === 'still' ? 'reduced' : 'full'
   }, [visualMode])
