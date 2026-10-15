@@ -9,6 +9,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     uniform float uTime;
     uniform float uAspect;
     uniform vec2 uPointer;
+    uniform float uVariant;
     varying vec3 vNormal;
     varying vec3 vPosition;
     varying float vArc;
@@ -27,16 +28,30 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       vec3 tangent=normalize(curve(u+.001)-center);
       vec3 side=normalize(cross(tangent,vec3(0.,0.,1.)));
       vec3 up=normalize(cross(side,tangent));
-      float radius=.088 + .018*sin(u*3. + uTime*.35);
-      vec3 normal=cos(v)*side+sin(v)*up;
-      mat3 rotation=rotate(.55+uTime*.065+uPointer.y*.10, -.3+uTime*.095+uPointer.x*.12);
-      vec3 p=rotation*(center+radius*normal);
-      p.y+=sin(uTime*.35)*.08;
-      vNormal=rotation*normal;
-      vPosition=p;
+
+      // Variant A: Original fuller sculptural mass with organic breathing taper
+      float rA = 0.175 + 0.038 * sin(u * 3.0 + uTime * 0.35);
+      vec3 normA = cos(v) * side + sin(v) * up;
+      vec3 offsetA = rA * normA;
+
+      // Variant B: Refined luminous layered-ribbon treatment with preserved visual mass
+      // Broad along binormal (0.19 breadth), tapered along normal, creating luxury sculptural ribbon contours
+      float ribbonWidth = 0.185 + 0.035 * sin(u * 3.0 + uTime * 0.3);
+      float ribbonHeight = 0.115 + 0.025 * cos(u * 2.0 - uTime * 0.25);
+      vec3 normB = normalize(cos(v) * side * ribbonWidth + sin(v) * up * ribbonHeight);
+      vec3 offsetB = cos(v) * side * ribbonWidth + sin(v) * up * ribbonHeight;
+
+      vec3 normal = mix(normA, normB, uVariant);
+      vec3 offset = mix(offsetA, offsetB, uVariant);
+
+      mat3 rotation = rotate(.55 + uTime * .065 + uPointer.y * .10, -.3 + uTime * .095 + uPointer.x * .12);
+      vec3 p = rotation * (center + offset);
+      p.y += sin(uTime * .35) * .08;
+      vNormal = rotation * normal;
+      vPosition = p;
       vArc=u;
-      float depth=4.5-p.z;
-      gl_Position=vec4(p.x*2.4/uAspect,p.y*2.4,(depth-2.)*.4,depth);
+      float depth = 4.5 - p.z;
+      gl_Position = vec4(p.x * 2.4 / uAspect, p.y * 2.4, (depth - 2.) * .4, depth);
     }`
   const fragment = `
     precision highp float;
@@ -51,17 +66,39 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     uniform float uDemoFinding;
     uniform float uDemoTone;
     void main() {
-      vec3 n=normalize(vNormal);
-      vec3 view=normalize(vec3(0.,0.,4.5)-vPosition);
-      vec3 light=normalize(vec3(-2.,4.,4.)-vPosition);
-      float diffuse=max(dot(n,light),0.);
-      float rim=pow(1.-max(dot(n,view),0.),3.0);
-      float spec=pow(max(dot(reflect(-light,n),view),0.),80.);
-      float stripe=pow(.5+.5*sin(vArc*32.+uTime*.2),28.);
-      vec3 color=vec3(.004,.06,.036)+vec3(.025,.48,.24)*diffuse;
-      color+=vec3(.20,1.0,.62)*rim*1.05;
-      color+=vec3(.85,1.,.92)*spec*1.15;
-      color+=vec3(.04,.22,.11)*stripe*diffuse;
+      vec3 n = normalize(vNormal);
+      vec3 view = normalize(vec3(0., 0., 4.5) - vPosition);
+      vec3 light = normalize(vec3(-2., 4., 4.) - vPosition);
+      vec3 light2 = normalize(vec3(3., -2., 2.) - vPosition);
+      
+      float diffuse = max(dot(n, light), 0.);
+      float diffuse2 = max(dot(n, light2), 0.) * 0.35;
+      
+      // Subsurface translucency / internal light transmission
+      float sss = pow(max(dot(view, -light), 0.), 2.6) * 0.45;
+      
+      // Dual-lobe specular reflections: sharp glint + soft anisotropic celadon luster
+      vec3 halfV = normalize(light + view);
+      float specSharp = pow(max(dot(n, halfV), 0.), 110.);
+      float specSoft = pow(max(dot(reflect(-light, n), view), 0.), 28.);
+      
+      // Deep obsidian-emerald body with celadon transmission (never flat plastic garden tubing)
+      vec3 obsidian = vec3(0.003, 0.016, 0.010);
+      vec3 celadon = vec3(0.035, 0.38, 0.21);
+      vec3 color = obsidian + celadon * (diffuse + diffuse2) + vec3(0.06, 0.42, 0.25) * sss;
+      
+      // Grazing Fresnel rim falloff: refined celadon aura
+      float rim = pow(1. - max(dot(n, view), 0.), 3.2);
+      color += vec3(0.18, 0.94, 0.58) * rim * 0.85;
+      
+      // Crisp specular highlights: metallic celadon & pearl white
+      color += vec3(0.92, 1.0, 0.95) * specSharp * 1.35;
+      color += vec3(0.24, 0.82, 0.52) * specSoft * 0.40;
+      
+      // Subtle architectural longitudinal ribbon micro-fluting
+      float fluting = pow(0.5 + 0.5 * sin(vArc * 28. + uTime * .18), 18.);
+      color += vec3(0.06, 0.35, 0.18) * fluting * (0.3 + 0.7 * diffuse);
+
       // A localized signal travels along the actual parametric centerline.
       // Circular distance makes the seam at 0 / 2pi continuous; this is ambient, not telemetry.
       float signalArc=mod(uTime*.65,6.2831853);
@@ -69,6 +106,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       arcDistance=min(arcDistance,6.2831853-arcDistance);
       float pulse=exp(-pow(arcDistance/.16,2.));
       color+=vec3(.28,.95,.60)*pulse*(.35+.65*diffuse);
+
       // A separate one-shot accent is driven by a deduplicated observed batch.
       float eventArc=mod(uSignalAge*2.4,6.2831853);
       float eventDistance=abs(vArc-eventArc);
@@ -83,18 +121,18 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
         dDist = min(dDist, 6.2831853 - dDist);
         float dHead = exp(-pow(dDist / 0.12, 2.0));
         float dTrailDist = mod(uDemoArc - vArc + 6.2831853, 6.2831853);
-        float dTrail = exp(-dTrailDist / 0.28) * (1.0 - smoothstep(0.0, 0.72, dTrailDist));
-        vec3 dColor = uDemoTone > 2.5 ? vec3(1.0, 0.32, 0.18) : uDemoTone > 1.5 ? vec3(1.0, 0.65, 0.20) : vec3(0.42, 1.0, 0.75);
-        color += dColor * (dHead * 1.7 + dTrail * 0.8) * (0.4 + 0.6 * diffuse);
+        float dTrail = exp(-dTrailDist / 0.32) * (1.0 - smoothstep(0.0, 0.8, dTrailDist));
+        vec3 dColor = uDemoTone > 2.5 ? vec3(1.0, 0.34, 0.18) : uDemoTone > 1.5 ? vec3(1.0, 0.72, 0.22) : vec3(0.42, 1.0, 0.75);
+        color += dColor * (dHead * 2.0 + dTrail * 0.95) * (0.35 + 0.65 * diffuse);
 
         // Breach sector illumination on confirmed security finding
         if (uDemoFinding > 0.5) {
           float breachDist = abs(vArc - 4.45);
           breachDist = min(breachDist, 6.2831853 - breachDist);
-          float breachGlow = exp(-pow(breachDist / 0.45, 2.0));
-          vec3 coralAlert = vec3(1.0, 0.34, 0.18);
-          float breath = 0.7 + 0.3 * sin(uTime * 4.0);
-          color += coralAlert * breachGlow * breath * 1.35;
+          float breachGlow = exp(-pow(breachDist / 0.42, 2.0));
+          vec3 coralAlert = vec3(1.0, 0.36, 0.18);
+          float breath = 0.75 + 0.25 * sin(uTime * 4.0);
+          color += coralAlert * breachGlow * breath * 1.5;
         }
       }
       gl_FragColor=vec4(color,1.);
@@ -130,7 +168,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   }
   const params: number[] = []
   const segments = window.innerWidth < 760 ? 128 : 224
-  const rings = 22
+  const rings = 24
   for (let i = 0; i < segments; i++) {
     for (let j = 0; j < rings; j++) {
       for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]) {
@@ -147,6 +185,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   const time = gl.getUniformLocation(program, 'uTime')
   const aspect = gl.getUniformLocation(program, 'uAspect')
   const parallax = gl.getUniformLocation(program, 'uPointer')
+  const variantLoc = gl.getUniformLocation(program, 'uVariant')
   const signalAge = gl.getUniformLocation(program, 'uSignalAge')
   const signalTone = gl.getUniformLocation(program, 'uSignalTone')
   const demoActiveLoc = gl.getUniformLocation(program, 'uDemoActive')
@@ -163,6 +202,23 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     'alert-dispatch': 5,
     'risk-recalculation': 6,
     'evidence-link': 7
+  }
+
+  // Variant A: 0.0 (Fuller sculptural mass), Variant B: 1.0 (Layered luminous celadon ribbon, default)
+  const initialVariant = typeof window !== 'undefined' && window.location?.search?.includes('variant=full') ? 0.0 : 1.0
+  let currentVariant = initialVariant
+  let targetVariant = initialVariant
+  canvas.dataset.loopVariant = initialVariant > 0.5 ? 'ribbon' : 'full'
+
+  function handleVariant(event: Event) {
+    const detail = (event as CustomEvent<any>).detail || {}
+    if (detail.variant === 'full' || detail.variant === 'a' || detail.variant === 0) {
+      targetVariant = 0.0
+      canvas.dataset.loopVariant = 'full'
+    } else {
+      targetVariant = 1.0
+      canvas.dataset.loopVariant = 'ribbon'
+    }
   }
 
   let demoActive = 0
@@ -238,6 +294,10 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       gl!.uniform1f(time, reduced.matches || forceReduced ? 2 : elapsed)
       pointer[0]+=(pointerTarget[0]-pointer[0])*.08;pointer[1]+=(pointerTarget[1]-pointer[1])*.08
       gl!.uniform2f(parallax, pointer[0], pointer[1])
+      
+      currentVariant += (targetVariant - currentVariant) * 0.08
+      gl!.uniform1f(variantLoc, currentVariant)
+
       gl!.uniform1f(signalAge, reduced.matches || forceReduced ? 100 : (now-observedAt)/1000)
       gl!.uniform1f(signalTone, tone)
 
@@ -254,13 +314,12 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
         gl!.uniform1f(demoFindingLoc, 0.0)
         gl!.uniform1f(demoToneLoc, 1.0)
       }
-
       gl!.clear(gl!.COLOR_BUFFER_BIT | gl!.DEPTH_BUFFER_BIT)
       gl!.drawArrays(gl!.TRIANGLES, 0, params.length/2)
       canvas.dataset.frames = String(frames)
       canvas.dataset.motion = reduced.matches || forceReduced ? 'reduced' : 'animated'
     }
-    if (!reduced.matches && !forceReduced) frame = requestAnimationFrame(draw)
+    if (!reduced.matches && !forceReduced && !stopped) frame = requestAnimationFrame(draw)
   }
   function resume() {
     cancelAnimationFrame(frame)
@@ -286,6 +345,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   window.addEventListener('hyperion-demo-stage', observation)
   window.addEventListener('hyperion-demo-stage', handleDemoState)
   window.addEventListener('hyperion-demo-reset', handleDemoState)
+  window.addEventListener('hyperion-loop-variant', handleVariant)
   resize(); setMode('webgl'); resume()
   return () => {
     stopped = true; cancelAnimationFrame(frame); observer.disconnect()
@@ -297,6 +357,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     window.removeEventListener('hyperion-demo-stage', observation)
     window.removeEventListener('hyperion-demo-stage', handleDemoState)
     window.removeEventListener('hyperion-demo-reset', handleDemoState)
+    window.removeEventListener('hyperion-loop-variant', handleVariant)
     shaders.forEach(shader => gl.deleteShader(shader))
     gl.deleteBuffer(buffer); gl.deleteProgram(program)
   }
