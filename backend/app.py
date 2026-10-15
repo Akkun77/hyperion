@@ -76,8 +76,12 @@ def load_openapi_spec():
                         documented_routes.add(f"{method.upper()}:{path.rstrip('/')}")
         except Exception as e:
             print(f"[Warning] Failed to parse openapi.json: {e}")
+    from product_connections import registered_routes
+    documented_routes.update(registered_routes())
 
 load_openapi_spec()
+from product_traffic import router as activity_router
+app.include_router(activity_router)
 
 # Runtime abuse tracking state (in-memory sliding window & token tracking)
 # IP -> list of request timestamps (epoch floats)
@@ -329,7 +333,7 @@ async def traffic_interception_middleware(request: Request, call_next):
     effective_pii = contains_pii
     for it in existing_items:
         if it.method == method and it.endpoint == normalized_path:
-            if effective_auth == "None" and it.auth_type and it.auth_type != "None":
+            if effective_auth == "None" and it.total_calls and it.auth_type and it.auth_type not in ("None", "Not observed"):
                 effective_auth = it.auth_type
             if it.contains_pii:
                 effective_pii = True
@@ -372,7 +376,8 @@ def get_kpis():
     shadow_apis = sum(1 for e in inventory if e.is_shadow)
     managed_apis = total_apis - shadow_apis
     pii_endpoints = sum(1 for e in inventory if e.contains_pii)
-    avg_risk = round(sum(e.risk_score for e in inventory) / total_apis, 1) if total_apis > 0 else 0
+    observed_inventory = [e for e in inventory if e.total_calls]
+    avg_risk = round(sum(e.risk_score for e in observed_inventory) / len(observed_inventory), 1) if observed_inventory else 0
 
     return {
         "total_apis": total_apis,
@@ -754,14 +759,21 @@ def infer_service_domain(endpoint: str) -> dict:
 
 @app.get("/api/risk-hierarchy")
 async def api_risk_hierarchy():
-    inventory = get_inventory(limit=500)
-    alerts = get_alerts(limit=500)
-    traffic_logs = get_traffic_logs(limit=100)
+    inventory = get_inventory(limit=None)
+    alerts = get_alerts(limit=None)
+    from database.db_client import SessionLocal
+    with SessionLocal() as evidence_db:
+        evidence_ids = {a.related_event_id for a in alerts if a.related_event_id}
+        traffic_logs = evidence_db.query(TrafficLogDB).filter(TrafficLogDB.id.in_(evidence_ids)).all()
     traffic_by_id = {t.id: t for t in traffic_logs}
 
     alerts_by_endpoint = defaultdict(list)
     for a in alerts:
-        alerts_by_endpoint[a.endpoint].append(a)
+        candidates = [item for item in inventory if item.endpoint == a.endpoint]
+        evidence = traffic_by_id.get(a.related_event_id)
+        match = next((item for item in candidates if evidence and item.method == evidence.method), candidates[0] if candidates else None)
+        if match:
+            alerts_by_endpoint[match.id].append(a)
 
     services_map = {}
     for item in inventory:
@@ -780,7 +792,7 @@ async def api_risk_hierarchy():
         except (TypeError, json.JSONDecodeError):
             reasons = [item.risk_reasons] if item.risk_reasons else []
 
-        item_alerts = alerts_by_endpoint.get(item.endpoint, [])
+        item_alerts = alerts_by_endpoint.get(item.id, [])
         formatted_alerts = []
         evidence_events = []
         for al in item_alerts:
@@ -828,10 +840,10 @@ async def api_risk_hierarchy():
 
     for sid, sdata in services_map.items():
         endpoints = sdata["endpoints"]
-        scores = [ep["risk_score"] for ep in endpoints]
+        scores = [ep["risk_score"] for ep in endpoints if ep['total_calls']]
         avg_score = round(sum(scores) / len(scores), 1) if scores else 0
         max_score = max(scores) if scores else 0
-        service_alerts = sum(len(ep["alerts"]) for ep in endpoints)
+        service_alerts = len({alert['alert_id'] for ep in endpoints for alert in ep['alerts']})
         shadow_count = sum(1 for ep in endpoints if ep["is_shadow"])
         
         weighted_score = int(round(0.6 * max_score + 0.4 * avg_score)) if scores else 0
@@ -856,7 +868,7 @@ async def api_risk_hierarchy():
         if any(ep["auth_type"] == "None" for ep in endpoints):
             drivers.append("Contains unauthenticated public route(s)")
         if not drivers:
-            drivers.append("Documented service routes with verified baseline controls")
+            drivers.append("Catalog routes; inspect endpoint factors for observed exposure")
 
         services_list.append({
             "id": sid,
@@ -875,7 +887,7 @@ async def api_risk_hierarchy():
 
     services_list.sort(key=lambda s: s["risk_score"], reverse=True)
 
-    platform_scores = [s["risk_score"] for s in services_list]
+    platform_scores = [s["risk_score"] for s in services_list if any(ep['total_calls'] for ep in s['endpoints'])]
     platform_avg = round(sum(platform_scores) / len(platform_scores), 1) if platform_scores else 0
     platform_max = max(platform_scores) if platform_scores else 0
     platform_risk = int(round(0.5 * platform_max + 0.5 * platform_avg)) if platform_scores else 0
@@ -902,8 +914,8 @@ async def api_risk_hierarchy():
 
     return {
         "platform": {
-            "name": "Hyperion Gateway Security Fabric",
-            "organization": "Corporate Banking & Payments Infrastructure",
+            "name": "Hyperion API Security Platform",
+            "organization": "Local monitored environment",
             "risk_score": platform_risk,
             "severity": p_sev,
             "total_services": len(services_list),
@@ -928,13 +940,21 @@ async def api_execution_flow(alert_id: Optional[str] = None, event_id: Optional[
     target_traffic = None
 
     if alert_id:
-        target_alert = next((a for a in alerts if str(a.id) == str(alert_id)), None)
+        from database.db_client import SessionLocal
+        with SessionLocal() as evidence_db:
+            target_alert = evidence_db.query(SecurityAlertDB).filter(SecurityAlertDB.id == alert_id).first()
+        if target_alert is None:
+            raise HTTPException(404, 'Finding not found')
         if target_alert and target_alert.related_event_id:
             target_traffic = get_traffic_log_by_id(target_alert.related_event_id)
     elif event_id:
         target_traffic = get_traffic_log_by_id(event_id)
+        if target_traffic is None:
+            raise HTTPException(404, 'Traffic event not found')
         if target_traffic:
-            target_alert = next((a for a in alerts if a.related_event_id == target_traffic.id), None)
+            from database.db_client import SessionLocal
+            with SessionLocal() as evidence_db:
+                target_alert = evidence_db.query(SecurityAlertDB).filter_by(related_event_id=target_traffic.id).order_by(SecurityAlertDB.id.desc()).first()
     
     if not target_alert and not target_traffic:
         for a in alerts:
@@ -974,6 +994,11 @@ async def api_execution_flow(alert_id: Optional[str] = None, event_id: Optional[
                 "severity": "INFO" if t.status_code < 400 else "WARN",
                 "timestamp": t.timestamp,
             })
+
+    if target_alert and not any(item['type']=='alert' and item['id']==str(target_alert.id) for item in available_events):
+        available_events.insert(0,dict(type='alert',id=str(target_alert.id),event_id=target_alert.related_event_id,label=f'Alert #{target_alert.id} — {target_alert.alert_type} ({target_alert.endpoint})',alert_type=target_alert.alert_type.lower(),severity=target_alert.severity,timestamp=target_alert.timestamp))
+    if target_traffic and not target_alert and not any(item['type']=='traffic' and item['id']==str(target_traffic.id) for item in available_events):
+        available_events.insert(0,dict(type='traffic',id=str(target_traffic.id),event_id=target_traffic.id,label=f'Traffic #{target_traffic.id} — {target_traffic.method} {target_traffic.endpoint}',alert_type='traffic',severity='INFO',timestamp=target_traffic.timestamp))
 
     if not target_traffic and not target_alert:
         return {
@@ -1090,11 +1115,11 @@ async def api_execution_flow(alert_id: Optional[str] = None, event_id: Optional[
             "id": "risk-recalculation",
             "name": "Risk Intelligence Update",
             "status": "updated",
-            "summary": f"Score {inv_item.risk_score if inv_item else 40}/100 ({inv_item.severity if inv_item else 'MEDIUM'})",
+            "summary": f"Score {inv_item.risk_score}/100 ({inv_item.severity})" if inv_item else 'Risk not evaluated: no inventory record',
             "meta": {
-                "Endpoint Score": f"{inv_item.risk_score if inv_item else 40} / 100",
-                "Exposure Severity": inv_item.severity if inv_item else "MEDIUM",
-                "Primary Driver": (inv_item.risk_reasons if inv_item else "Baseline exposure"),
+                "Endpoint Score": f"{inv_item.risk_score} / 100" if inv_item else 'Not evaluated',
+                "Exposure Severity": inv_item.severity if inv_item else "Not evaluated",
+                "Primary Driver": (inv_item.risk_reasons if inv_item else "No persisted risk factors"),
                 "Parent Domain": domain_info["name"],
             }
         },
@@ -1102,12 +1127,12 @@ async def api_execution_flow(alert_id: Optional[str] = None, event_id: Optional[
             "step": 7,
             "id": "evidence-link",
             "name": "Forensic Evidence Trace",
-            "status": "linked" if (target_alert and target_traffic) else "unlinked",
-            "summary": f"Finding #{target_alert.id if target_alert else 'N/A'} ↔ Traffic Event #{target_traffic.id if target_traffic else 'N/A'}",
+            "status": "linked" if target_traffic else "unlinked",
+            "summary": f"Finding #{target_alert.id} ↔ Traffic Event #{target_traffic.id}" if target_alert and target_traffic else f"Persisted request #{target_traffic.id}; no linked finding" if target_traffic else 'No linked traffic record',
             "meta": {
                 "Linked Traffic ID": target_traffic.id if target_traffic else None,
                 "Linked Alert ID": str(target_alert.id) if target_alert else None,
-                "Traceability": "100% Persisted Evidence Link",
+                "Traceability": "Persisted request evidence" if target_traffic else 'No request evidence available',
                 "Investigation URL": f"/command-center/investigation?alert={target_alert.id}" if target_alert else (f"/command-center/investigation?event={target_traffic.id}" if target_traffic else "/command-center/investigation"),
             }
         }
@@ -1121,6 +1146,11 @@ async def api_execution_flow(alert_id: Optional[str] = None, event_id: Optional[
         "stages": stages,
     }
 
+
+from product_connections import install_connections
+from product_demo import install_demo
+install_connections(app, documented_routes, evaluate_endpoint_from_state)
+install_demo(app, api_execution_flow)
 
 # Serve Frontend Static Dashboard
 # =====================================================================

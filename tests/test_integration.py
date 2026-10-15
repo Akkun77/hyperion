@@ -24,6 +24,7 @@ class IntegratedPlatformTests(unittest.TestCase):
     def setUp(self):
         self.assertEqual(Path(db_client.DB_FILE).parent, Path(_TEST_DIRECTORY.name))
         db_client.reset_db()
+        app.load_openapi_spec()
         app.ip_request_timestamps.clear()
         app.alert_dedup_cache.clear()
         app.hyperion_event_buffer.clear()
@@ -202,7 +203,8 @@ class IntegratedPlatformTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         db_client.engine.dispose()
-        _TEST_DIRECTORY.cleanup()
+        # TemporaryDirectory cleans up at process exit, after all test modules
+        # sharing this isolated fixture have completed.
 
 
 if __name__ == "__main__":

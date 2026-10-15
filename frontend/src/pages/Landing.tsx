@@ -40,6 +40,7 @@ export default function Landing({ platform, visualMode, onVisualMode }: { platfo
     <main id="main">
       <section className="hero">
         <div className="hero-copy">
+          <Link className="hero-watch-link" href="/watch">Watch Hyperion work <span>↗</span></Link>
           <div className="eyebrow hero-enter"><span className="small-cross">+</span> INTELLIGENCE AT THE API EDGE</div>
           <h1 className="hero-enter">API Security,<br/><span>Beyond</span><br/><em>Visibility.</em></h1>
           <p className="hero-enter">Discover undocumented APIs, detect suspicious traffic, investigate security findings and understand exposure with explainable risk intelligence.</p>

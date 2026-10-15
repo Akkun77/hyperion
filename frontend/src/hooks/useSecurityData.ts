@@ -40,7 +40,7 @@ export function useSecurityData() {
         const signal = controller.signal
         const [health, kpis, inventory, traffic, alerts, risk, hierarchy] = await Promise.all([
           api.health(signal), api.getKPIs(signal), api.getInventory(signal),
-          api.getTrafficEvents(0, 1000, signal), api.getSecurityAlerts(0, 100, signal), api.getRiskScores(0, 1000, signal),
+          api.getTrafficEvents(0, 32, signal), api.getSecurityAlerts(0, 100, signal), api.getRiskScores(0, 1000, signal),
           api.getRiskHierarchy(signal),
         ])
         if (!disposed) {

@@ -29,7 +29,7 @@ test('all seven command center page destinations and subtitles are defined', () 
   for (const key of expectedKeys) {
     assert.ok(source.includes(`subtitles[section]`) || source.includes(`subtitles:`), 'subtitles mapping must be present')
   }
-  assert.ok(source.includes('Hierarchical Topology'), 'hierarchical topology mode must be supported')
+  assert.ok(source.includes('Platform hierarchy') && source.includes('<RiskHierarchy data={hierarchy}/>'), 'progressive platform hierarchy mode must be supported')
   assert.ok(source.includes('pipeline-figure') && source.includes('Execution flow'), 'execution flow figure must be present')
 })
 

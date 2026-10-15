@@ -86,6 +86,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   let totalFrameMs = 0
   let targetFrameMs = 1000 / (window.innerWidth < 760 ? 30 : 60)
   const pointer = [0, 0]
+  const pointerTarget = [0, 0]
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   try {
     for (const [type, source] of [[gl.VERTEX_SHADER, vertex], [gl.FRAGMENT_SHADER, fragment]] as const) {
@@ -130,7 +131,8 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     if (detail.disconnected) { observedAt = -10000; return }
     if (!detail.signals.length || reduced.matches || forceReduced) return
     observedAt = performance.now(); tone = pulseTone(detail.signals)
-    canvas.dataset.signalBatches = String(Number(canvas.dataset.signalBatches || 0)+1)
+    const counter=event.type==='hyperion-demo-stage'?'demoStages':'signalBatches'
+    canvas.dataset[counter] = String(Number(canvas.dataset[counter] || 0)+1)
     canvas.dataset.signalTone = String(tone)
   }
   gl.enable(gl.DEPTH_TEST)
@@ -162,6 +164,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       }
       previous = now; last = now
       gl!.uniform1f(time, reduced.matches || forceReduced ? 2 : elapsed)
+      pointer[0]+=(pointerTarget[0]-pointer[0])*.08;pointer[1]+=(pointerTarget[1]-pointer[1])*.08
       gl!.uniform2f(parallax, pointer[0], pointer[1])
       gl!.uniform1f(signalAge, reduced.matches || forceReduced ? 100 : (now-observedAt)/1000)
       gl!.uniform1f(signalTone, tone)
@@ -179,8 +182,8 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   }
   function move(event: PointerEvent) {
     if (reduced.matches || forceReduced) return
-    pointer[0] = (event.clientX/window.innerWidth-.5)
-    pointer[1] = (event.clientY/window.innerHeight-.5)
+    pointerTarget[0] = (event.clientX/window.innerWidth-.5)
+    pointerTarget[1] = (event.clientY/window.innerHeight-.5)
   }
   function lost(event: Event) {
     event.preventDefault(); stopped = true; cancelAnimationFrame(frame)
@@ -193,6 +196,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   reduced.addEventListener('change', resume)
   canvas.addEventListener('webglcontextlost', lost)
   window.addEventListener('hyperion-observation', observation)
+  window.addEventListener('hyperion-demo-stage', observation)
   resize(); setMode('webgl'); resume()
   return () => {
     stopped = true; cancelAnimationFrame(frame); observer.disconnect()
@@ -201,6 +205,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     reduced.removeEventListener('change', resume)
     canvas.removeEventListener('webglcontextlost', lost)
     window.removeEventListener('hyperion-observation', observation)
+    window.removeEventListener('hyperion-demo-stage', observation)
     shaders.forEach(shader => gl.deleteShader(shader))
     gl.deleteBuffer(buffer); gl.deleteProgram(program)
   }

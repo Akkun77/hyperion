@@ -85,7 +85,7 @@ def upsert_api_inventory(
             api.risk_reasons = reasons_str
             api.severity = severity
             api.last_seen = now_iso
-            if auth_type != "None" or not api.auth_type or api.auth_type == "None":
+            if auth_type != "None" or not api.auth_type or api.auth_type in ("None", "Not observed"):
                 api.auth_type = auth_type
             if contains_pii:
                 api.contains_pii = True

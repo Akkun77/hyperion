@@ -1,7 +1,7 @@
 // frontend/src/api.ts
 import { APITrafficEvent, SecurityAlert, RiskScore, HealthResponse, APITrafficLog, GovernanceKPIs, InventoryEndpoint, RiskHierarchyResponse, ExecutionFlowResponse } from './types'
 
-const API_BASE = (import.meta as any).env.VITE_API_BASE || 'http://localhost:8000'
+export const API_BASE = (import.meta as any).env.VITE_API_BASE || 'http://localhost:8000'
 
 export const api = {
   health: async (signal?: AbortSignal): Promise<HealthResponse> => {

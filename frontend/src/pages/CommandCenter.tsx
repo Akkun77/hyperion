@@ -3,14 +3,18 @@ import { Line } from 'react-chartjs-2'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler } from 'chart.js'
 import Brand from '../components/Brand'
 import { Link, navigate } from '../router'
-import { filterTraffic, trafficBuckets, findingIsNew } from '../workspace/filters'
+import { findingIsNew } from '../workspace/filters'
+import CompactTraffic from '../workspace/CompactTraffic'
+import RiskHierarchy from '../workspace/RiskHierarchy'
+import ConnectAPI from '../workspace/ConnectAPI'
 import '../workspace/command-center.css'
 import ThreatFindings from '../workspace/ThreatFindings'
 import LiveSignal from '../workspace/SignalObservatory'
 import RouteView from '../workspace/RouteView'
 import { useSessionValue } from '../workspace/useSessionValue'
 import { SecuritySnapshot, useSecurityData } from '../hooks/useSecurityData'
-import { APITrafficLog, InventoryEndpoint, ExecutionFlowResponse } from '../types'
+import { APITrafficLog, InventoryEndpoint, ExecutionFlowResponse, SecurityAlert } from '../types'
+import { productRequest } from '../workspace/productApi'
 import api from '../api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
@@ -27,7 +31,7 @@ function Overview({ data }: { data: SecuritySnapshot }) {
     data.traffic.forEach(event => { const minute = Math.floor(new Date(event.timestamp).getTime()/60000)*60000; if (Number.isFinite(minute)) map.set(minute, (map.get(minute) || 0)+1) })
     return [...map.entries()].sort((a, b) => a[0]-b[0])
   }, [data.traffic])
-  const metrics = [['Observed endpoints', data.kpis.total_apis, 'inventory'], ['Recorded requests', data.kpis.total_requests_observed, 'traffic'], ['Security findings', data.kpis.active_alerts, 'alerts'], ['High-risk endpoints', data.kpis.high_risk_endpoints, 'risk']]
+  const metrics = [['Catalog endpoints', data.kpis.total_apis, 'inventory'], ['Recorded requests', data.kpis.total_requests_observed, 'traffic'], ['Security findings', data.kpis.active_alerts, 'alerts'], ['High-risk endpoints', data.kpis.high_risk_endpoints, 'risk']]
   return <>
     <div className="metric-strip">{metrics.map(([label, value, href]) => <Link href={`/command-center/${href}`} className="metric" key={label}><span>{label}<b>↗</b></span><strong>{Number(value).toLocaleString()}</strong><small>{label === 'High-risk endpoints' ? 'SCORE ABOVE 60 / 100' : 'PERSISTED TELEMETRY'}</small></Link>)}</div>
     <div className="overview-grid"><section className="panel chart-panel"><div className="panel-heading"><div><span className="eyebrow">OBSERVED ACTIVITY</span><h2>Traffic over time</h2></div><span className="mono muted">{data.traffic.length} most recent requests</span></div>{buckets.length ? <div className="traffic-chart" role="img" aria-label={`Traffic chart showing ${data.traffic.length} recorded requests grouped by minute`}><Line data={{ labels: buckets.map(([stamp]) => new Date(stamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })), datasets: [{ label: 'Recorded requests', data: buckets.map(([, count]) => count), borderColor: '#52e4a3', backgroundColor: 'rgba(82,228,163,.08)', fill: true, tension: .25, pointRadius: buckets.length > 50 ? 0 : 2, borderWidth: 1.5 }] }} options={{ responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#87978f', maxTicksLimit: 5, maxRotation: 0 } }, y: { beginAtZero: true, grid: { color: '#1e2c25' }, ticks: { color: '#87978f', precision: 0 } } } }} /></div> : <Empty>Traffic will appear when application requests are observed.</Empty>}</section><section className="panel exposure-panel"><span className="eyebrow">EXPOSURE SNAPSHOT</span><h2>Beyond the catalog</h2><div className="exposure-number">{data.kpis.shadow_apis}<span>shadow endpoints</span></div><p>Observed routes absent from the managed OpenAPI specification.</p><Link href="/command-center/inventory?shadow=true" className="text-link">Inspect shadow APIs ↗</Link><div className="panel-foot">AVERAGE RISK <b>{data.kpis.avg_risk_score} / 100</b></div></section></div>
@@ -50,30 +54,11 @@ function Inventory({ data }: { data: SecuritySnapshot }) {
   const services = data.hierarchy.services
   const domain = services.find(row=>row.id===service)
   const rows = data.inventory.filter(row => row.endpoint.toLowerCase().includes(search.trim().toLowerCase()) && (!shadow || row.is_shadow) && (method === 'all' || row.method === method) && (!domain || domain.endpoints.some(endpoint=>endpoint.id===row.id))).sort((a, b) => sort === 'risk' ? b.risk_score - a.risk_score : sort === 'activity' ? b.total_calls - a.total_calls : a.endpoint.localeCompare(b.endpoint))
-  return <section className="panel"><div className="table-toolbar"><label className="search-field"><span>⌕</span><input aria-label="Search endpoints" placeholder="Search endpoints…" value={search} onChange={event => setSearch(event.target.value)}/></label><select aria-label="Service domain" value={service} onChange={event=>setService(event.target.value)}><option value="all">All service domains</option>{services.map(row=><option key={row.id} value={row.id}>{row.name} ({row.endpoint_count})</option>)}</select><select aria-label="HTTP method" value={method} onChange={event => setMethod(event.target.value)}><option value="all">All methods</option>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(value => <option key={value}>{value}</option>)}</select><label className="checkbox-label"><input type="checkbox" checked={shadow} onChange={event => setShadow(event.target.checked)}/>Shadow only</label><select aria-label="Sort endpoints" value={sort} onChange={event => setSort(event.target.value)}><option value="risk">Highest risk</option><option value="activity">Most requests</option><option value="path">Endpoint A–Z</option></select><button className="filter-reset" onClick={() => { setSearch(''); setMethod('all'); setShadow(false); setSort('risk'); setService('all') }}>Clear filters</button><span className="result-count mono" role="status">{rows.length} endpoints</span></div><div className="table-scroll"><table role="table" className="inventory-table"><thead><tr><th>Method / endpoint</th><th>Classification</th><th>Risk score</th><th>Auth observed</th><th>Requests</th><th>Last seen</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}><td data-label="Method / endpoint"><Link className="endpoint-link" href={inspect('endpoint', row.id)}><span className="method">{row.method}</span><code>{row.endpoint}</code><span>↗</span></Link></td><td data-label="Classification"><Badge value={row.is_shadow ? 'shadow' : 'managed'}/></td><td data-label="Risk score"><Risk score={row.risk_score}/></td><td data-label="Auth observed">{row.auth_type}</td><td data-label="Requests" className="mono">{row.total_calls}</td><td data-label="Last seen" className="mono nowrap">{date(row.last_seen)}</td></tr>)}</tbody></table></div>{!rows.length && <Empty>No endpoints match these filters.</Empty>}<div className="table-note">Inventory reflects persisted observations, including historical demo records. Authentication is an observed signal, not proof of enforced access control.</div></section>
+  return <section className="panel"><div className="table-toolbar"><label className="search-field"><span>⌕</span><input aria-label="Search endpoints" placeholder="Search endpoints…" value={search} onChange={event => setSearch(event.target.value)}/></label><select aria-label="Service domain" value={service} onChange={event=>setService(event.target.value)}><option value="all">All service domains</option>{services.map(row=><option key={row.id} value={row.id}>{row.name} ({row.endpoint_count})</option>)}</select><select aria-label="HTTP method" value={method} onChange={event => setMethod(event.target.value)}><option value="all">All methods</option>{['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(value => <option key={value}>{value}</option>)}</select><label className="checkbox-label"><input type="checkbox" checked={shadow} onChange={event => setShadow(event.target.checked)}/>Shadow only</label><select aria-label="Sort endpoints" value={sort} onChange={event => setSort(event.target.value)}><option value="risk">Highest risk</option><option value="activity">Most requests</option><option value="path">Endpoint A–Z</option></select><button className="filter-reset" onClick={() => { setSearch(''); setMethod('all'); setShadow(false); setSort('risk'); setService('all') }}>Clear filters</button><span className="result-count mono" role="status">{rows.length} endpoints</span></div><div className="table-scroll"><table role="table" className="inventory-table"><thead><tr><th>Method / endpoint</th><th>Classification</th><th>Risk score</th><th>Auth observed</th><th>Requests</th><th>Last seen</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}><td data-label="Method / endpoint"><Link className="endpoint-link" href={inspect('endpoint', row.id)}><span className="method">{row.method}</span><code>{row.endpoint}</code><span>↗</span></Link></td><td data-label="Classification"><Badge value={row.is_shadow ? 'shadow' : 'managed'}/><small className="request-time">{row.total_calls ? 'Observed locally' : 'Registered only'}</small></td><td data-label="Risk score">{row.total_calls ? <Risk score={row.risk_score}/> : <span className="muted">Not evaluated</span>}</td><td data-label="Auth observed">{row.auth_type}</td><td data-label="Requests" className="mono">{row.total_calls}</td><td data-label="Last seen" className="mono nowrap">{date(row.last_seen)}</td></tr>)}</tbody></table></div>{!rows.length && <Empty>No endpoints match these filters.</Empty>}<div className="table-note">Inventory reflects persisted observations, including historical demo records. Authentication is an observed signal, not proof of enforced access control.</div></section>
 }
 
 function Traffic({ data }: { data: SecuritySnapshot }) {
-  const [search, setSearch] = useSessionValue('traffic-search','')
-  const [method, setMethod] = useSessionValue('traffic-method','all')
-  const [status, setStatus] = useSessionValue('traffic-status','all')
-  const [range, setRange] = useSessionValue('traffic-range','all')
-  const rows = filterTraffic(data.traffic, { search, method, status, range })
-  const buckets = trafficBuckets(rows)
-  return <section className="panel">
-    <div className="table-toolbar">
-      <label className="search-field"><span>⌕</span><input aria-label="Search traffic" placeholder="Endpoint, IP, user or event ID…" value={search} onChange={event => setSearch(event.target.value)}/></label>
-      <select aria-label="Traffic time range" value={range} onChange={event => setRange(event.target.value)}><option value="all">All loaded history</option><option value="15">Last 15 minutes</option><option value="60">Last hour</option><option value="1440">Last 24 hours</option></select>
-      <select aria-label="Traffic method" value={method} onChange={event => setMethod(event.target.value)}><option value="all">All methods</option>{[...new Set(data.traffic.map(row => row.method))].sort().map(value => <option key={value}>{value}</option>)}</select>
-      <select aria-label="Response status" value={status} onChange={event => setStatus(event.target.value)}><option value="all">All responses</option><option value="2">2xx success</option><option value="3">3xx redirect</option><option value="4">4xx client error</option><option value="5">5xx server error</option></select>
-      <button className="filter-reset" onClick={() => { setSearch(''); setMethod('all'); setStatus('all'); setRange('all') }}>Clear filters</button>
-      <span className="result-count mono" role="status">{rows.length} / {data.traffic.length} loaded events</span>
-    </div>
-    {rows.length > 0 && <div className="traffic-summary"><div className="panel-heading"><h2>Request activity</h2><span className="mono muted">{rows.length} matched · grouped by minute</span></div><div className="traffic-chart" role="img" aria-label={`Filtered traffic chart: ${rows.length} requests in ${buckets.length} observed minutes`}><Line data={{ labels: buckets.map(([stamp]) => new Date(stamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })), datasets: [{ label: 'Observed requests', data: buckets.map(([, count]) => count), borderColor: '#52e4a3', backgroundColor: 'rgba(82,228,163,.08)', fill: true, pointRadius: 2, borderWidth: 1.5 }] }} options={{ responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0, color: '#9ab5a7' } }, x: { ticks: { color: '#9ab5a7', maxTicksLimit: 5, maxRotation: 0 }, grid: { display: false } } } }}/></div></div>}
-    <div className="table-scroll"><table role="table" className="traffic-table"><thead><tr><th>Event</th><th>Request</th><th>Caller IP</th><th>User</th><th>Status</th><th>Observed</th></tr></thead><tbody>{rows.map(row => <tr key={row.id}><td data-label="Event"><Link className="record-link" href={inspect('event', row.id)}>#{row.id} ↗</Link></td><td data-label="Request"><span className="method">{row.method}</span> <code>{row.endpoint}</code></td><td data-label="Caller IP" className="mono">{row.caller_ip || 'Unknown'}</td><td data-label="User" className="mono">{row.user_id || 'Not supplied'}</td><td data-label="Status"><Badge value={String(row.status_code)}/></td><td data-label="Observed" className="mono">{date(row.timestamp)}</td></tr>)}</tbody></table></div>
-    {!rows.length && <Empty>No traffic matches this view. Change the time range or clear filters.</Empty>}
-    <div className="table-note">Filters and chart apply to the 1,000 newest loaded events, not the entire database. Time ranges are relative to now. Click an event ID to inspect its persisted request.</div>
-  </section>
+  return <CompactTraffic data={data}/>
 }
 
 function Alerts({ data }: { data: SecuritySnapshot }) {
@@ -84,7 +69,6 @@ function RiskIntelligence({ data }: { data: SecuritySnapshot }) {
   const [viewMode, setViewMode] = useSessionValue('risk-view','hierarchy')
   const hierarchy = data.hierarchy
   const platform = hierarchy?.platform
-  const services = hierarchy?.services || []
 
   return <div className="risk-intelligence-view">
     <div className="view-mode-switch" role="tablist" aria-label="Risk view mode">
@@ -95,7 +79,7 @@ function RiskIntelligence({ data }: { data: SecuritySnapshot }) {
         className={`mode-button ${viewMode === 'hierarchy' ? 'active' : ''}`}
         onClick={() => setViewMode('hierarchy')}
       >
-        Hierarchical Topology
+        Platform hierarchy
       </button>
       <button
         type="button"
@@ -104,137 +88,11 @@ function RiskIntelligence({ data }: { data: SecuritySnapshot }) {
         className={`mode-button ${viewMode === 'flat' ? 'active' : ''}`}
         onClick={() => setViewMode('flat')}
       >
-        Endpoint Breakdown
+        Endpoint scores
       </button>
     </div>
 
-    {viewMode === 'hierarchy' && platform && (
-      <div className="hierarchy-container">
-        <section className="platform-posture">
-          <div className="posture-header">
-            <div>
-              <span className="eyebrow">PLATFORM RISK TOPOLOGY</span>
-              <h2>Enterprise Platform Posture</h2>
-              <p>{platform.name} · {platform.organization}</p>
-            </div>
-            <div className="posture-score-box">
-              <span className="eyebrow">PLATFORM RISK</span>
-              <Risk score={platform.risk_score} />
-              <Badge value={platform.severity} />
-            </div>
-          </div>
-
-          <div className="posture-stats">
-            <div className="posture-stat">
-              <span>Monitored Domains</span>
-              <strong>{platform.total_services}</strong>
-            </div>
-            <div className="posture-stat">
-              <span>Observed Endpoints</span>
-              <strong>{platform.total_endpoints}</strong>
-            </div>
-            <div className="posture-stat">
-              <span>Active Threat Alerts</span>
-              <strong>{platform.active_alerts_count}</strong>
-            </div>
-            <div className="posture-stat">
-              <span>Unmanaged Shadows</span>
-              <strong>{platform.total_shadow_endpoints}</strong>
-            </div>
-          </div>
-
-          {platform.factors && platform.factors.length > 0 && (
-            <div className="posture-factors">
-              <span className="eyebrow">PRIMARY RISK DRIVERS</span>
-              <ul>
-                {platform.factors.map(factor => (
-                  <li key={factor}>{factor}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
-
-        <div className="domain-list">
-          {services.map(svc => (
-            <details className="domain-card" key={svc.id} open={svc.alert_count > 0 || svc.risk_score > 50}>
-              <summary>
-                <div className="domain-info">
-                  <span className="eyebrow">{svc.id.toUpperCase()}</span>
-                  <h3>{svc.name}</h3>
-                  <p>{svc.endpoint_count} observed endpoints · avg risk {svc.avg_risk_score} / 100</p>
-                </div>
-                <div className="domain-badges">
-                  {svc.shadow_count > 0 && <span className="domain-tag tag-shadow">{svc.shadow_count} SHADOW</span>}
-                  {svc.alert_count > 0 && <span className="domain-tag tag-alert">{svc.alert_count} THREATS</span>}
-                  <Badge value={svc.severity} />
-                  <Risk score={svc.risk_score} />
-                </div>
-              </summary>
-              <div className="domain-body">
-                {svc.drivers && svc.drivers.length > 0 && (
-                  <div className="domain-drivers">
-                    {svc.drivers.map(driver => (
-                      <span className="driver-pill" key={driver}>{driver}</span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="endpoints-tree">
-                  <span className="eyebrow">CONTAINED ENDPOINTS ({svc.endpoints.length})</span>
-                  {svc.endpoints.map(ep => (
-                    <div className="endpoint-node" key={ep.id}>
-                      <div className="node-header">
-                        <div className="node-route">
-                          <span className="method">{ep.method}</span>
-                          <code>{ep.endpoint}</code>
-                          {ep.is_shadow && <Badge value="shadow" />}
-                        </div>
-                        <div className="node-metrics">
-                          <Risk score={ep.risk_score} />
-                          <Link className="text-link" href={inspect('endpoint', ep.id)}>Inspect ↗</Link>
-                        </div>
-                      </div>
-
-                      {ep.risk_reasons && ep.risk_reasons.length > 0 && (
-                        <ul className="node-reasons">
-                          {ep.risk_reasons.map(r => (
-                            <li key={r}>{r}</li>
-                          ))}
-                        </ul>
-                      )}
-
-                      {ep.alerts && ep.alerts.length > 0 && (
-                        <div className="node-alerts-box">
-                          <span className="eyebrow" style={{ color: '#ff9e94' }}>ACTIVE THREAT FINDINGS</span>
-                          {ep.alerts.map(alt => (
-                            <div className="node-alert-item" key={alt.alert_id}>
-                              <span><b>#{alt.alert_id}</b> {alt.alert_type.replace('_', ' ')}: {alt.description}</span>
-                              <Link className="evidence-link" href={inspect('alert', alt.alert_id)}>View finding ↗</Link>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {ep.evidence_events && ep.evidence_events.length > 0 && (
-                        <div className="node-traffic-box">
-                          <span className="eyebrow">RECENT TRAFFIC EVIDENCE:</span>
-                          {ep.evidence_events.map(ev => (
-                            <Link key={ev.id} className="record-link" href={inspect('event', ev.id)}>
-                              #{ev.id} ({ev.caller_ip || 'Internal'} / status {ev.status_code}) ↗
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </details>
-          ))}
-        </div>
-      </div>
-    )}
+    {viewMode === 'hierarchy' && platform && <RiskHierarchy data={hierarchy}/>}
 
     {(viewMode === 'flat' || !platform) && (
       <section className="risk-list">
@@ -245,7 +103,7 @@ function RiskIntelligence({ data }: { data: SecuritySnapshot }) {
                 <span className="eyebrow">ENDPOINT EXPOSURE</span>
                 <h2 className="mono">{score.target_id}</h2>
               </div>
-              <Risk score={score.score} />
+              {score.risk_level === 'NOT_OBSERVED' ? <span>Not evaluated</span> : <Risk score={score.score} />}
               <Badge value={score.risk_level} />
               <span className="expand-icon">+</span>
             </summary>
@@ -422,7 +280,18 @@ function EndpointEvidence({ endpoint }: { endpoint: InventoryEndpoint }) {
 
 function Investigation({ data, path }: { data: SecuritySnapshot; path: string }) {
   const query = new URLSearchParams(path.split('?')[1] || '')
-  const alert = data.alerts.find(row => row.alert_id === query.get('alert'))
+  const requestedAlert = query.get('alert')
+  const loadedAlert = data.alerts.find(row => row.alert_id === requestedAlert)
+  const [resolvedAlert,setResolvedAlert] = useState<SecurityAlert|null>(null)
+  const [alertError,setAlertError] = useState('')
+  useEffect(()=>{
+    setResolvedAlert(null);setAlertError('')
+    if(!requestedAlert||loadedAlert)return
+    const controller=new AbortController()
+    productRequest<SecurityAlert>(`findings/${encodeURIComponent(requestedAlert)}`,controller.signal).then(result=>{if(!controller.signal.aborted)setResolvedAlert(result)}).catch(reason=>{if(!controller.signal.aborted)setAlertError(reason.message)})
+    return()=>controller.abort()
+  },[requestedAlert,loadedAlert?.alert_id])
+  const alert = loadedAlert || (resolvedAlert?.alert_id===requestedAlert?resolvedAlert:undefined)
   const endpoint = data.inventory.find(row => String(row.id) === query.get('endpoint'))
   const eventId = query.get('event') || alert?.related_event_ids[0]
   const [traffic, setTraffic] = useState<APITrafficLog | null>(null)
@@ -439,7 +308,7 @@ function Investigation({ data, path }: { data: SecuritySnapshot; path: string })
     return () => { active = false; controller.abort() }
   }, [eventId])
   if (endpoint) return <><Link className="text-link investigation-back" href="/command-center/inventory">← Back to inventory</Link><EndpointEvidence endpoint={endpoint}/></>
-  if (!alert && !eventId) return <section className="panel"><Empty>{query.get('alert') ? 'This finding is outside the 100 newest loaded findings.' : 'Start with a finding, endpoint or traffic event to follow its evidence.'}</Empty><div className="empty-actions"><Link className="button secondary" href="/command-center/alerts">Browse findings ↗</Link><Link className="text-link" href="/command-center/inventory">Browse inventory ↗</Link></div></section>
+  if (!alert && !eventId) return <section className="panel"><Empty>{query.get('alert') ? (alertError || 'Loading persisted finding…') : 'Start with a finding, endpoint or traffic event to follow its evidence.'}</Empty><div className="empty-actions"><Link className="button secondary" href="/command-center/alerts">Browse findings ↗</Link><Link className="text-link" href="/command-center/inventory">Browse inventory ↗</Link></div></section>
   return <><Link className="text-link investigation-back" href={alert ? '/command-center/alerts' : '/command-center/traffic'}>← Back to {alert ? 'findings' : 'traffic'}</Link><div className="investigation-grid">{alert && <section className="panel evidence-block"><div className="panel-heading"><span className="eyebrow">FINDING #{alert.alert_id}</span><Badge value={alert.severity}/></div><h2>{alert.alert_type.replace('_', ' ')}</h2><p>{alert.description}</p><dl><div><dt>Observed</dt><dd>{date(alert.timestamp)}</dd></div><div><dt>Detection</dt><dd>{alert.detection_method}</dd></div></dl><div className="action-note"><span className="eyebrow">RECOMMENDED NEXT STEP</span><p>{alert.recommended_action}</p></div></section>}<section className="panel evidence-block"><span className="eyebrow">PERSISTED TRAFFIC EVIDENCE {eventId ? `#${eventId}` : ''}</span>{loading && <p role="status">Loading related event…</p>}{error && <p role="alert" className="error-text">{error}</p>}{!eventId && <p>This historical finding has no linked traffic record. No evidence has been inferred.</p>}{traffic && <><h2><span className="method">{traffic.method}</span> <code>{traffic.endpoint}</code></h2><dl>{[['Caller IP', traffic.caller_ip], ['User identity', traffic.user_id], ['Target resource', traffic.target_resource_id], ['HTTP status', traffic.status_code], ['Auth signal', traffic.auth_type], ['Payload bytes', traffic.payload_size_bytes], ['Observed', date(traffic.timestamp)]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd className="mono">{value ?? 'Not supplied'}</dd></div>)}</dl></>}</section></div></>
 }
 
@@ -462,16 +331,17 @@ function DemoControl({ onComplete }: { onComplete: () => void }) {
 
 export default function CommandCenter({ path }: { path: string }) {
   const section = path.split('?')[0].replace(/^\/command-center\/?/, '')
-  const current = tabs.find(([key]) => key === section)
+  const current = section === 'connect' ? ['connect','Connect an API'] : tabs.find(([key]) => key === section)
   const { data, error, updated, refreshing, refresh, signals } = useSecurityData()
   const subtitles: Record<string, string> = {
     '': 'The full picture. From exposure to evidence.',
-    inventory: 'Every observed endpoint, including the undocumented.',
+    inventory: 'Registered and observed endpoints, including the undocumented.',
     traffic: 'Actual requests, recorded at the API edge.',
     alerts: 'Behavioral signals with an investigation path.',
     risk: 'Exposure scores with every contributing factor.',
     flow: 'Step-by-step visual lineage from edge request to forensic evidence.',
-    investigation: 'Follow a finding back to its originating request.'
+    investigation: 'Follow a finding back to its originating request.',
+    connect: 'Document your authorized API. Know exactly what is — and is not — monitored.'
   }
-  return <div className="command-shell command-editorial"><aside className="command-sidebar"><Link href="/" aria-label="Hyperion home"><Brand /></Link><label className="mobile-navigation">Workspace<select aria-label="Command center page" value={section} onChange={event => navigate(`/command-center${event.target.value ? '/'+event.target.value : ''}`)}>{tabs.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><div className="workspace-label eyebrow">SECURITY WORKSPACE</div><nav aria-label="Workspace navigation" style={{ '--nav-index': Math.max(0, tabs.findIndex(([key]) => key === section)) } as React.CSSProperties}><span className="workspace-nav-indicator" aria-hidden="true"/>{tabs.map(([key, label], index) => <Link key={key} href={`/command-center${key ? '/'+key : ''}`} className={section === key ? 'active' : ''} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}<i>↗</i></Link>)}</nav><div className="sidebar-bottom"><span className="mono">HYPERION / v1.0</span><p>Visibility. Behavior. Evidence.</p><Link href="/">← Return to product site</Link></div></aside><div className="command-body"><header className="command-topbar"><span className="eyebrow">HYPERION <b>/</b> COMMAND CENTER</span><span className={`connection ${error ? 'connection-error' : ''}`}><i/>{error ? 'Connection interrupted' : data ? 'Backend connected' : 'Connecting'}</span></header><main id="main" className="command-main"><div className="workspace-heading"><div><div className="eyebrow">OPERATIONAL INTELLIGENCE</div><h1>{current?.[1] || 'Workspace not found'}</h1><p>{subtitles[section]}</p></div><div className="refresh-control"><span className="mono">{updated ? `Synced ${updated.toLocaleTimeString()}` : 'Awaiting telemetry'}<small>REFRESHES EVERY 5 SECONDS</small></span><button className="icon-button" aria-label="Refresh telemetry" disabled={refreshing} onClick={refresh}><span className={refreshing ? 'spin' : ''}>↻</span></button></div></div>{error && <div className="error-banner" role="alert">{error} {data ? 'Showing the last successful snapshot.' : 'Check the configured backend service, then retry.'}<button onClick={refresh}>Retry ↗</button></div>}<details className="live-signal-disclosure" open={section === "" || section === "traffic"}><summary>Live Signal · {error ? "connection interrupted" : "observed telemetry"}</summary><LiveSignal state={signals} disconnected={Boolean(error)}/></details>{section === '' && <DemoControl onComplete={refresh}/>}<span className="sr-only" role="status">{refreshing ? 'Refreshing telemetry' : 'Telemetry refresh complete'}</span>{!data ? <div className="panel empty-state" role="status">{error ? 'Telemetry unavailable.' : 'Reading persisted security telemetry…'}</div> : <RouteView section={section}>{view => <>{view === '' ? <Overview data={data}/> : view === 'inventory' ? <Inventory data={data}/> : view === 'traffic' ? <Traffic data={data}/> : view === 'alerts' ? <Alerts data={data}/> : view === 'risk' ? <RiskIntelligence data={data}/> : view === 'flow' ? <ExecutionFlow data={data} path={path}/> : view === 'investigation' ? <Investigation data={data} path={path}/> : <Empty><Link href="/command-center">Return to overview ↗</Link></Empty>}</>}</RouteView>}<footer className="workspace-footer"><span>OBSERVE → UNDERSTAND → INVESTIGATE</span><span>PERIODIC REFRESH · 5 SECOND INTERVAL</span></footer></main></div></div>
+  return <div className="command-shell command-editorial"><aside className="command-sidebar"><Link href="/" aria-label="Hyperion home"><Brand /></Link><label className="mobile-navigation">Workspace<select aria-label="Command center page" value={section} onChange={event => navigate(`/command-center${event.target.value ? '/'+event.target.value : ''}`)}>{tabs.map(([key, label]) => <option key={key} value={key}>{label}</option>)}<option value="connect">Connect API</option></select></label><div className="workspace-label eyebrow">SECURITY WORKSPACE</div><nav aria-label="Workspace navigation" style={{ '--nav-index': Math.max(0, tabs.findIndex(([key]) => key === section)) } as React.CSSProperties}>{section !== 'connect' && <span className="workspace-nav-indicator" aria-hidden="true"/>}{tabs.map(([key, label], index) => <Link key={key} href={`/command-center${key ? '/'+key : ''}`} className={section === key ? 'active' : ''} aria-current={section === key ? 'page' : undefined}><span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}<i>↗</i></Link>)}</nav><div className="sidebar-bottom"><span className="mono">HYPERION / v1.0</span><p>Visibility. Behavior. Evidence.</p><Link href="/">← Return to product site</Link></div></aside><div className="command-body"><header className="command-topbar"><span className="eyebrow">HYPERION <b>/</b> COMMAND CENTER</span><div className="workspace-actions"><Link href="/command-center/connect">Connect API ↗</Link><Link href="/watch">Watch Hyperion work ↗</Link></div><span className={`connection ${error ? 'connection-error' : ''}`}><i/>{error ? 'Connection interrupted' : data ? 'Backend connected' : 'Connecting'}</span></header><main id="main" className="command-main"><div className="workspace-heading"><div><div className="eyebrow">OPERATIONAL INTELLIGENCE</div><h1>{current?.[1] || 'Workspace not found'}</h1><p>{subtitles[section]}</p></div><div className="refresh-control"><span className="mono">{updated ? `Synced ${updated.toLocaleTimeString()}` : 'Awaiting telemetry'}<small>REFRESHES EVERY 5 SECONDS</small></span><button className="icon-button" aria-label="Refresh telemetry" disabled={refreshing} onClick={refresh}><span className={refreshing ? 'spin' : ''}>↻</span></button></div></div>{error && <div className="error-banner" role="alert">{error} {data ? 'Showing the last successful snapshot.' : 'Check the configured backend service, then retry.'}<button onClick={refresh}>Retry ↗</button></div>}<details className="live-signal-disclosure" open={section === ""}><summary>Live Signal · {error ? "connection interrupted" : "observed telemetry"}</summary><LiveSignal state={signals} disconnected={Boolean(error)}/></details>{section === '' && <DemoControl onComplete={refresh}/>}<span className="sr-only" role="status">{refreshing ? 'Refreshing telemetry' : 'Telemetry refresh complete'}</span>{!data ? <div className="panel empty-state" role="status">{error ? 'Telemetry unavailable.' : 'Reading persisted security telemetry…'}</div> : <RouteView section={section}>{view => <>{view === '' ? <Overview data={data}/> : view === 'connect' ? <ConnectAPI/> : view === 'inventory' ? <Inventory data={data}/> : view === 'traffic' ? <Traffic data={data}/> : view === 'alerts' ? <Alerts data={data}/> : view === 'risk' ? <RiskIntelligence data={data}/> : view === 'flow' ? <ExecutionFlow data={data} path={path}/> : view === 'investigation' ? <Investigation data={data} path={path}/> : <Empty><Link href="/command-center">Return to overview ↗</Link></Empty>}</>}</RouteView>}<footer className="workspace-footer"><span>OBSERVE → UNDERSTAND → INVESTIGATE</span><span>PERIODIC REFRESH · 5 SECOND INTERVAL</span></footer></main></div></div>
 }

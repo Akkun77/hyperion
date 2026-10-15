@@ -48,3 +48,15 @@ class SecurityAlertDB(Base):
     caller_ip = Column(String, nullable=True)
     details = Column(Text)
     related_event_id = Column(Integer, nullable=True)
+
+
+class APIConnectionDB(Base):
+    """Additive local catalog metadata. No credentials or remote fetching."""
+    __tablename__ = 'api_connections'
+    id = Column(Integer, primary_key=True)
+    fingerprint = Column(String, unique=True, nullable=False)
+    name = Column(String, nullable=False)
+    kind = Column(String, nullable=False)
+    base_url = Column(String, nullable=False)
+    routes = Column(Text, nullable=False)
+    created_at = Column(String, nullable=False)
