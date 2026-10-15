@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from '../router'
 import SceneTransition from '../components/SceneTransition'
 import { DemoResult, productRequest } from './productApi'
+import { DEMO_STAGE_DURATIONS } from './demoPlayback'
+import { useDemoPlayback } from './useDemoPlayback'
 
 const scenarios = [
   ['bola', 'BOLA'],
@@ -77,11 +79,11 @@ export default function WatchHyperionWork() {
   const [result, setResult] = useState<DemoResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [stage, setStage] = useState(0)
-  const [direction, setDirection] = useState<'forward' | 'backward'>('forward')
-  const [playing, setPlaying] = useState(false)
+  const { stage, direction, playing, speed, controller } = useDemoPlayback()
   const [loopVariant, setLoopVariant] = useState<'ribbon' | 'full'>('ribbon')
   const emittedStage = useRef('')
+  const pendingRun = useRef<AbortController | null>(null)
+  useEffect(() => () => pendingRun.current?.abort(), [])
 
   useEffect(() => {
     if (!result) return
@@ -107,37 +109,24 @@ export default function WatchHyperionWork() {
         })
       )
     }
-    const reduced =
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-      document.documentElement.dataset.visualMotion === 'reduced'
-    if (!playing || reduced || stage >= result.flow.stages.length - 1) {
-      setPlaying(false)
-      return
-    }
-    const timer = window.setTimeout(() => {
-      setDirection('forward')
-      setStage(current => current + 1)
-    }, 1400)
-    return () => window.clearTimeout(timer)
-  }, [result, stage, playing])
+  }, [result, stage])
 
   // Keyboard navigation for stepping through stages
   useEffect(() => {
     if (!result) return
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && (e.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))) return
       if (e.key === 'ArrowRight' && stage < result.flow.stages.length - 1) {
-        setPlaying(false)
-        setDirection('forward')
-        setStage(s => s + 1)
+        e.preventDefault()
+        controller.goTo(stage + 1)
       } else if (e.key === 'ArrowLeft' && stage > 0) {
-        setPlaying(false)
-        setDirection('backward')
-        setStage(s => s - 1)
+        e.preventDefault()
+        controller.goTo(stage - 1)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [result, stage])
+  }, [result, stage, controller])
 
   const switchVariant = (v: 'ribbon' | 'full') => {
     setLoopVariant(v)
@@ -148,19 +137,26 @@ export default function WatchHyperionWork() {
     setBusy(true)
     setError('')
     setResult(null)
-    setPlaying(false)
-    window.dispatchEvent(new CustomEvent('hyperion-demo-stage', { detail: { stage: 1, active: true, tone: 1.0 } }))
+    controller.stop()
+    pendingRun.current?.abort()
+    const request = new AbortController()
+    pendingRun.current = request
     try {
-      const response = await productRequest<DemoResult>('demo/run', undefined, { scenario, authorized })
-      setDirection('forward')
-      setStage(0)
+      const response = await productRequest<DemoResult>('demo/run', request.signal, { scenario, authorized })
+      if (request.signal.aborted) return
+      if (response.flow?.stages.length !== 7 || !response.selected_request?.id) {
+        throw new Error('The backend did not return a complete recorded demonstration.')
+      }
       setResult(response)
-      setPlaying(true)
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        document.documentElement.dataset.visualMotion === 'reduced'
+      controller.start(response.flow.stages.length, !reduced)
     } catch (reason) {
+      if (request.signal.aborted) return
       setError(reason instanceof Error ? reason.message : 'Controlled execution unavailable.')
       window.dispatchEvent(new CustomEvent('hyperion-demo-reset', { detail: { reset: true } }))
     } finally {
-      setBusy(false)
+      if (!request.signal.aborted) setBusy(false)
     }
   }
 
@@ -228,7 +224,7 @@ export default function WatchHyperionWork() {
                     onClick={() => {
                       setScenario(value)
                       setResult(null)
-                      setPlaying(false)
+                      controller.stop()
                       setError('')
                       window.dispatchEvent(new CustomEvent('hyperion-demo-reset', { detail: { reset: true } }))
                     }}
@@ -299,7 +295,7 @@ export default function WatchHyperionWork() {
             </div>
           </div>
         ) : (
-          <div className="demonstration-view" data-run-id={result.run_id}>
+          <div className="demonstration-view" data-run-id={result.run_id} data-stage={stage + 1} data-playback={playing ? 'playing' : 'paused'}>
             {/* Header: Verified Execution Result */}
             <header className="demonstration-header">
               <div className="header-meta">
@@ -317,14 +313,9 @@ export default function WatchHyperionWork() {
               <button
                 type="button"
                 className="replay-control-btn"
-                onClick={() => {
-                  setDirection('forward')
-                  setStage(0)
-                  setPlaying(true)
-                }}
-                disabled={playing}
+                onClick={() => controller.replay()}
               >
-                {playing ? 'Replaying stages…' : 'Replay recorded stages'}
+                Replay recorded stages
               </button>
             </header>
 
@@ -336,17 +327,35 @@ export default function WatchHyperionWork() {
                   type="button"
                   className={`timeline-step-btn ${index === stage ? 'active' : ''}`}
                   aria-current={index === stage ? 'step' : undefined}
-                  onClick={() => {
-                    setPlaying(false)
-                    setDirection(index > stage ? 'forward' : 'backward')
-                    setStage(index)
-                  }}
+                  onClick={() => controller.goTo(index)}
                 >
                   <span className="step-num">0{item.step}</span>
                   <span className="step-title">{item.name.replace('Incoming Edge Request', 'Request').replace('API Endpoint Resolution', 'Endpoint').replace('Traffic Log Persistence', 'Audit').replace('Security Engine Evaluation', 'Analysis').replace('Alert Creation & Classification', 'Finding').replace('Risk Intelligence Update', 'Risk').replace('Forensic Evidence Trace', 'Evidence')}</span>
                 </button>
               ))}
             </nav>
+            <div className="demo-playback-controls" role="group" aria-label="Presentation playback">
+              <button type="button" className="step-nav-btn" disabled={stage === result.flow.stages.length - 1}
+                onClick={() => playing ? controller.pause() : controller.resume()}>
+                {playing ? 'Pause' : 'Resume'}
+              </button>
+              <label>Playback speed{' '}
+                <select aria-label="Playback speed" value={speed} onChange={e => controller.setSpeed(Number(e.target.value))}>
+                  <option value={0.75}>0.75×</option><option value={1}>1×</option><option value={1.5}>1.5×</option>
+                </select>
+              </label>
+              <span className="demo-playback-status" role="status">
+                {stage === result.flow.stages.length - 1 ? 'Evidence stays open until you choose an action.' :
+                  `${playing ? 'Guided playback' : 'Paused / manual exploration'} · ${DEMO_STAGE_DURATIONS[stage] / 1000 / speed}s presentation duration`}
+                {' '}Recorded result — not backend processing time.
+              </span>
+              <button type="button" className="step-nav-btn" onClick={() => {
+                controller.stop()
+                setResult(null)
+                emittedStage.current = ''
+                window.dispatchEvent(new CustomEvent('hyperion-demo-reset', { detail: { reset: true } }))
+              }}>Exit demonstration</button>
+            </div>
 
             {/* Active Stage Presentation with Smooth Lateral Transition */}
             <SceneTransition transitionKey={stage} direction={direction}>
@@ -471,11 +480,7 @@ export default function WatchHyperionWork() {
                     type="button"
                     className="step-nav-btn prev"
                     disabled={stage === 0}
-                    onClick={() => {
-                      setPlaying(false)
-                      setDirection('backward')
-                      setStage(s => Math.max(0, s - 1))
-                    }}
+                    onClick={() => controller.goTo(stage - 1)}
                   >
                     ← Previous Stage
                   </button>
@@ -488,11 +493,7 @@ export default function WatchHyperionWork() {
                     <button
                       type="button"
                       className="step-nav-btn next primary"
-                      onClick={() => {
-                        setPlaying(false)
-                        setDirection('forward')
-                        setStage(s => s + 1)
-                      }}
+                      onClick={() => controller.goTo(stage + 1)}
                     >
                       Next Stage →
                     </button>
@@ -500,11 +501,7 @@ export default function WatchHyperionWork() {
                     <button
                       type="button"
                       className="step-nav-btn replay primary"
-                      onClick={() => {
-                        setDirection('forward')
-                        setStage(0)
-                        setPlaying(true)
-                      }}
+                      onClick={() => controller.replay()}
                     >
                       Replay Walkthrough ↺
                     </button>

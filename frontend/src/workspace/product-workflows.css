@@ -214,6 +214,10 @@ html[data-route="watch"] .environment canvas{transform:translateX(-26vw) scale(1
 .step-nav-btn.replay.primary{background:none;border:1px solid #52e4a3;color:#52e4a3;font-weight:500}
 .step-nav-btn.replay.primary:hover{background:rgba(82,228,163,0.12);color:#ffffff}
 .step-page-count{font-family:var(--mono);font-size:13px;color:#7a9987}
+.demo-playback-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:16px 0}
+.demo-playback-controls label{display:flex;align-items:center;gap:8px}
+.demo-playback-controls select{background:#101b17;color:inherit;border:1px solid #456053;border-radius:6px;padding:8px}
+.demo-playback-status{flex:1 1 240px;line-height:1.6;color:#bdcfc4}
 
 /* Responsive Viewports */
 @media(max-width:1180px){
