@@ -51,12 +51,12 @@ const QUESTION_STEPS: QuestionStep[] = [
     stepNumber: 4,
     question: '04 / WHAT FINDING WAS PRODUCED?',
     headline: 'BOLA Ownership Detector triggers with CRITICAL severity.',
-    body: 'Hyperion confirms the object-level ownership bypass in real time, generates Security Alert #1, and recalculates the endpoint risk score to 55 / 100.',
+    body: 'This illustrative preview has no attached backend execution. Its endpoint risk score is Not available. Open the full controlled walkthrough to inspect an actual recorded result.',
     specs: {
       'Security Alert ID': 'Alert #1 (BOLA)',
       'Severity Level': 'CRITICAL',
-      'Dynamic Risk Score': '55 / 100 (HIGH EXPOSURE)',
-      'Risk Factors': '+30 (BOLA Vulnerability), +20 (PII Exposure)'
+      'Dynamic Risk Score': 'Not available',
+      'Risk Factors': 'Not available'
     }
   },
   {

@@ -1,6 +1,6 @@
 import { pulseTone, ObservedSignal } from '../workspace/liveSignal'
 // One native WebGL surface. No animation frames pass through React state.
-export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: string) => void, forceReduced = false) {
+export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: string) => void, forceReduced = false, fitComposition = false) {
   const gl = canvas.getContext('webgl', { alpha: true, antialias: true, powerPreference: 'low-power' })
   if (!gl) { setMode('fallback'); return () => {} }
   const vertex = `
@@ -10,6 +10,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     uniform float uAspect;
     uniform vec2 uPointer;
     uniform float uVariant;
+    uniform float uFrame;
     varying vec3 vNormal;
     varying vec3 vPosition;
     varying float vArc;
@@ -51,7 +52,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
       vPosition = p;
       vArc=u;
       float depth = 4.5 - p.z;
-      gl_Position = vec4(p.x * 2.4 / uAspect, p.y * 2.4, (depth - 2.) * .4, depth);
+      gl_Position = vec4(p.x * 2.4 * uFrame / uAspect, p.y * 2.4 * uFrame, (depth - 2.) * .4, depth);
     }`
   const fragment = `
     precision highp float;
@@ -184,6 +185,7 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
   gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0)
   const time = gl.getUniformLocation(program, 'uTime')
   const aspect = gl.getUniformLocation(program, 'uAspect')
+  const framing = gl.getUniformLocation(program, 'uFrame')
   const parallax = gl.getUniformLocation(program, 'uPointer')
   const variantLoc = gl.getUniformLocation(program, 'uVariant')
   const signalAge = gl.getUniformLocation(program, 'uSignalAge')
@@ -274,6 +276,9 @@ export function createEnvironment(canvas: HTMLCanvasElement, setMode: (mode: str
     canvas.height = Math.max(1, Math.floor(bounds.height*dpr))
     gl!.viewport(0, 0, canvas.width, canvas.height)
     gl!.uniform1f(aspect, canvas.width/canvas.height)
+    gl!.uniform1f(framing, fitComposition ? .78 * Math.min(1, canvas.width/canvas.height) : 1)
+    // Resizing clears the drawing buffer, including a stationary preview.
+    if (reduced.matches || forceReduced) { cancelAnimationFrame(frame); frame = requestAnimationFrame(draw) }
   }
   function draw(now: number) {
     if (stopped || document.hidden) return

@@ -77,10 +77,10 @@ const STORY_STAGES: StoryStage[] = [
     technicalContext: {
       category: 'RISK INTELLIGENCE FORMULA',
       specs: {
-        'Dynamic Risk Score': '55 / 100 (HIGH EXPOSURE)',
-        'Active Threat Factor': '+30 (BOLA vulnerability)',
-        'Data Factor': '+20 (PII payload transmission)',
-        'Remediation': 'High Priority Asset Review'
+        'Dynamic Risk Score': 'Not available',
+        'Active Threat Factor': 'Not available',
+        'Data Factor': 'Not available',
+        'Assessment': 'Open a recorded execution to inspect its backend risk assessment'
       }
     }
   },

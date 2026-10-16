@@ -4,6 +4,7 @@ import SceneTransition from '../components/SceneTransition'
 import { DemoResult, productRequest } from './productApi'
 import DemoPlaybackControls from './DemoPlaybackControls'
 import { useDemoPlayback } from './useDemoPlayback'
+import RecordedRisk from './RecordedRisk'
 
 const scenarios = [
   ['bola', 'BOLA'],
@@ -61,8 +62,7 @@ const STAGE_NARRATIVES: Record<number, StageNarrative> = {
     stageNumber: 6,
     category: 'RISK EXPLANATION',
     title: "The affected endpoint's risk is explained.",
-    explanation: 'Risk score is dynamically recalculated to reflect an active exploit condition (+30 BOLA factor, +20 PII indicator), updating asset posture to High.',
-    technicalSummary: 'Score: 55 / 100 · Exposure: High · Primary Driver: Active BOLA bypass'
+    explanation: 'The risk assessment is read from this execution’s recorded backend evidence.'
   },
   7: {
     stageNumber: 7,
@@ -350,7 +350,7 @@ export default function WatchHyperionWork() {
                 </div>
 
                 <h3 className="stage-headline">{currentNarrative.title}</h3>
-                <p className="stage-explanation-text">{currentNarrative.explanation}</p>
+                <p className="stage-explanation-text">{stage === 5 ? <RecordedRisk flow={result.flow} /> : currentNarrative.explanation}</p>
 
                 {/* Stage Technical Telemetry */}
                 <div className="stage-signals-ledger">
@@ -407,7 +407,7 @@ export default function WatchHyperionWork() {
                       <div className="summary-item full-width">
                         <span className="summary-label">Risk Posture</span>
                         <span className="summary-data">
-                          Endpoint score calculated to 55 / 100 (+30 BOLA factor, +20 PII indicator)
+                          <RecordedRisk flow={result.flow} />
                         </span>
                       </div>
                     </div>

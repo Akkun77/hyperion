@@ -19,8 +19,8 @@ function setup({ supported = true, reduced = false } = {}) {
   globalThis.document = { hidden: false, addEventListener: (key, fn) => documentEvents.set(key, fn), removeEventListener: key => documentEvents.delete(key) }
   globalThis.requestAnimationFrame = fn => { const id = next++; queue.set(id, fn); return id }
   globalThis.cancelAnimationFrame = id => queue.delete(id)
-  let disconnected = false
-  globalThis.ResizeObserver = class { observe() {} disconnect() { disconnected = true } }
+  let disconnected = false, resize = () => {}
+  globalThis.ResizeObserver = class { constructor(callback) { resize = callback } observe() {} disconnect() { disconnected = true } }
   const gl = new Proxy({
     createShader: () => ({}), createProgram: () => ({}), createBuffer: () => ({}),
     getShaderParameter: () => true, getProgramParameter: () => true,
@@ -31,7 +31,7 @@ function setup({ supported = true, reduced = false } = {}) {
   const canvasEvents = new Map()
   const canvas = { dataset: {}, getContext: () => supported ? gl : null, getBoundingClientRect: () => ({ width: 1000, height: 800 }), addEventListener: (key, fn) => canvasEvents.set(key, fn), removeEventListener: key => canvasEvents.delete(key) }
   const step = time => { const pending = [...queue.values()]; queue.clear(); pending.forEach(fn => fn(time)) }
-  return { canvas, queue, step, documentEvents, canvasEvents, windowEvents, mediaEvents, deleted, get draws() { return draws }, get disconnected() { return disconnected } }
+  return { canvas, queue, step, resize: () => resize(), documentEvents, canvasEvents, windowEvents, mediaEvents, deleted, get draws() { return draws }, get disconnected() { return disconnected } }
 }
 
 test('WebGL animates over time with no input and caps pixel ratio', () => {
@@ -61,6 +61,20 @@ test('OS reduced motion renders one static frame with no continuing loop', () =>
   s.step(20)
   assert.equal(s.canvas.dataset.motion, 'reduced')
   assert.equal(s.draws, 1)
+  assert.equal(s.queue.size, 0)
+  dispose()
+})
+
+test('stationary preview redraws after a resize clears its drawing buffer', () => {
+  const s = setup()
+  const dispose = createEnvironment(s.canvas, () => {}, true, true)
+  s.step(20)
+  assert.equal(s.draws, 1)
+  assert.equal(s.queue.size, 0)
+  s.resize()
+  assert.equal(s.queue.size, 1)
+  s.step(40)
+  assert.equal(s.draws, 2)
   assert.equal(s.queue.size, 0)
   dispose()
 })
