@@ -3,6 +3,7 @@ import Brand from '../components/Brand'
 import { Link } from '../router'
 import HomepageDemoPreview from '../components/HomepageDemoPreview'
 import ContinuousSecurityStory from '../components/ContinuousSecurityStory'
+import './homepage-responsive-safety.css'
 
 export default function Landing({
   platform,

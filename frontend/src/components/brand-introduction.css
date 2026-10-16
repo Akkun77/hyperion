@@ -1,0 +1,29 @@
+/* Dedicated opening composition, using only the existing Hyperion loop. */
+body:has(.hyperion-opening){overflow:hidden}
+.brand-reveal-overlay.hyperion-opening{background:#040705;animation:hyperion-opening-exit .45s 2.3s ease-in-out both}
+.hyperion-opening .brand-reveal-stage{gap:20px;width:100%;padding:28px;perspective:1000px}
+.hyperion-opening .reveal-svg-wrap{width:clamp(260px,36vw,440px);height:clamp(260px,36vw,440px);flex:none;animation:hyperion-loop-reveal 1.3s ease-out both}
+.hyperion-opening .intro-loop-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0}
+.hyperion-opening [data-renderer=webgl] .intro-loop-canvas{opacity:1}
+.hyperion-opening [data-renderer=webgl] .reveal-loop-svg{visibility:hidden}
+.hyperion-opening .reveal-loop-svg{animation:hyperion-loop-turn 2.75s ease-in-out both;filter:drop-shadow(0 0 30px #52e4a333)}
+.hyperion-opening .loop-guide{stroke:#385e4a;stroke-width:1.4}
+.hyperion-opening .loop-trace{stroke:#52e4a3;animation:hyperion-loop-trace 1.25s .15s both}
+.hyperion-opening .loop-radiance{stroke:#cdffe3;stroke-width:2.3;stroke-dasharray:8 92;stroke-dashoffset:100;opacity:1;animation:hyperion-loop-pulse 2.3s .2s linear both}
+.hyperion-opening .reveal-brand-text{animation:brand-text-in .65s 1.15s both;gap:12px}
+.hyperion-opening .reveal-title{font-size:clamp(30px,4vw,54px);letter-spacing:.24em;text-indent:.24em}
+.hyperion-opening .reveal-subtitle{font-size:11px;letter-spacing:.25em}
+.hyperion-opening .intro-decoration-note{font:11px var(--mono);color:#7a9687;letter-spacing:.03em;margin-top:8px}
+.brand-reveal-overlay.hyperion-opening .intro-skip{font-size:13px;padding:12px 20px;bottom:max(24px,env(safe-area-inset-bottom));color:#c5dbcf;border-color:#385346}
+@keyframes hyperion-loop-reveal{0%{opacity:0;filter:brightness(.12);transform:scale(.92)}45%{opacity:1;filter:brightness(.65)}100%{opacity:1;filter:brightness(1);transform:scale(1)}}
+@keyframes hyperion-loop-turn{from{transform:rotateY(-20deg) rotateZ(-8deg)}to{transform:rotateY(12deg) rotateZ(4deg)}}
+@keyframes hyperion-loop-trace{from{stroke-dashoffset:100;opacity:.1}to{stroke-dashoffset:0;opacity:1}}
+@keyframes hyperion-loop-pulse{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@keyframes hyperion-opening-exit{from{opacity:1}to{opacity:0;visibility:hidden}}
+@media(max-height:620px){.hyperion-opening .reveal-svg-wrap{width:220px;height:220px}.hyperion-opening .brand-reveal-stage{gap:12px}.hyperion-opening .reveal-title{font-size:30px}}
+@media(prefers-reduced-motion:reduce){.hyperion-opening,.hyperion-opening *{animation:none!important;transition:none!important}.hyperion-opening .reveal-brand-text,.hyperion-opening .reveal-svg-wrap{opacity:1}.hyperion-opening .loop-trace{stroke-dashoffset:0}.hyperion-opening .loop-radiance{display:none}}
+html[data-visual-motion=reduced] .hyperion-opening .reveal-brand-text{opacity:1}
+.hyperion-opening.opening-reduced,.hyperion-opening.opening-reduced *{animation:none!important;transition:none!important}
+.hyperion-opening.opening-reduced .reveal-brand-text,.hyperion-opening.opening-reduced .reveal-svg-wrap{opacity:1}
+.hyperion-opening.opening-reduced .loop-trace{stroke-dashoffset:0}
+.hyperion-opening.opening-reduced .loop-radiance{display:none}
