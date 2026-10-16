@@ -28,7 +28,8 @@ window.fetch=async()=>{
 }
 let previousStage='',previousTime=0
 new MutationObserver(()=>{
- const stage=document.querySelector('.demonstration-view')?.getAttribute('data-stage') || ''
+ const view=document.querySelector('.demonstration-view')
+ const stage=view?`${view.getAttribute('data-stage')} ${view.getAttribute('data-playback')}`:''
  if(stage===previousStage)return
  const now=performance.now()
  const row=document.createElement('tr')
@@ -37,5 +38,5 @@ new MutationObserver(()=>{
  }
  document.querySelector('#timing-log')!.append(row)
  previousStage=stage;previousTime=now
-}).observe(document.querySelector('#root')!,{subtree:true,childList:true,attributes:true,attributeFilter:['data-stage']})
+}).observe(document.querySelector('#root')!,{subtree:true,childList:true,attributes:true,attributeFilter:['data-stage','data-playback']})
 createRoot(document.querySelector('#root')!).render(<React.StrictMode><WatchHyperionWork/></React.StrictMode>)

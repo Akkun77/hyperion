@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from '../router'
 import SceneTransition from '../components/SceneTransition'
 import { DemoResult, productRequest } from './productApi'
-import { DEMO_STAGE_DURATIONS } from './demoPlayback'
+import DemoPlaybackControls from './DemoPlaybackControls'
 import { useDemoPlayback } from './useDemoPlayback'
 
 const scenarios = [
@@ -79,7 +79,7 @@ export default function WatchHyperionWork() {
   const [result, setResult] = useState<DemoResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const { stage, direction, playing, speed, controller } = useDemoPlayback()
+  const { stage, direction, playing, controller } = useDemoPlayback()
   const [loopVariant, setLoopVariant] = useState<'ribbon' | 'full'>('ribbon')
   const emittedStage = useRef('')
   const pendingRun = useRef<AbortController | null>(null)
@@ -148,9 +148,7 @@ export default function WatchHyperionWork() {
         throw new Error('The backend did not return a complete recorded demonstration.')
       }
       setResult(response)
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-        document.documentElement.dataset.visualMotion === 'reduced'
-      controller.start(response.flow.stages.length, !reduced)
+      controller.start(response.flow.stages.length)
     } catch (reason) {
       if (request.signal.aborted) return
       setError(reason instanceof Error ? reason.message : 'Controlled execution unavailable.')
@@ -176,7 +174,7 @@ export default function WatchHyperionWork() {
       {/* Visual Identity Caption & Geometry Variant Switcher */}
       <aside className="sculpture-caption-bar" aria-label="Sculpture guidance">
         <p className="watch-sculpture-caption">
-          Ambient loop motion is symbolic. Live luminous pulse traces the 7 recorded processing stages.
+          Living security core
         </p>
         <div className="geometry-toggle" role="group" aria-label="Core geometry variant">
           <span className="geometry-toggle-label">Core Geometry:</span>
@@ -299,7 +297,7 @@ export default function WatchHyperionWork() {
             {/* Header: Verified Execution Result */}
             <header className="demonstration-header">
               <div className="header-meta">
-                <span className="eyebrow">COMPLETED CONTROLLED LOCAL EXECUTION</span>
+                <span className="eyebrow demo-recorded-indicator">Recorded demo</span>
                 <h2 className="execution-outcome">
                   {result.findings.length > 0 ? 'An unauthorized access was detected.' : result.detector_result}
                 </h2>
@@ -312,10 +310,15 @@ export default function WatchHyperionWork() {
 
               <button
                 type="button"
-                className="replay-control-btn"
-                onClick={() => controller.replay()}
+                className="demo-exit-control"
+                onClick={() => {
+                  controller.stop()
+                  setResult(null)
+                  emittedStage.current = ''
+                  window.dispatchEvent(new CustomEvent('hyperion-demo-reset', { detail: { reset: true } }))
+                }}
               >
-                Replay recorded stages
+                Exit
               </button>
             </header>
 
@@ -334,28 +337,7 @@ export default function WatchHyperionWork() {
                 </button>
               ))}
             </nav>
-            <div className="demo-playback-controls" role="group" aria-label="Presentation playback">
-              <button type="button" className="step-nav-btn" disabled={stage === result.flow.stages.length - 1}
-                onClick={() => playing ? controller.pause() : controller.resume()}>
-                {playing ? 'Pause' : 'Resume'}
-              </button>
-              <label>Playback speed{' '}
-                <select aria-label="Playback speed" value={speed} onChange={e => controller.setSpeed(Number(e.target.value))}>
-                  <option value={0.75}>0.75×</option><option value={1}>1×</option><option value={1.5}>1.5×</option>
-                </select>
-              </label>
-              <span className="demo-playback-status" role="status">
-                {stage === result.flow.stages.length - 1 ? 'Evidence stays open until you choose an action.' :
-                  `${playing ? 'Guided playback' : 'Paused / manual exploration'} · ${DEMO_STAGE_DURATIONS[stage] / 1000 / speed}s presentation duration`}
-                {' '}Recorded result — not backend processing time.
-              </span>
-              <button type="button" className="step-nav-btn" onClick={() => {
-                controller.stop()
-                setResult(null)
-                emittedStage.current = ''
-                window.dispatchEvent(new CustomEvent('hyperion-demo-reset', { detail: { reset: true } }))
-              }}>Exit demonstration</button>
-            </div>
+            <DemoPlaybackControls stage={stage} stageCount={result.flow.stages.length} playing={playing} controller={controller}/>
 
             {/* Active Stage Presentation with Smooth Lateral Transition */}
             <SceneTransition transitionKey={stage} direction={direction}>
@@ -474,39 +456,6 @@ export default function WatchHyperionWork() {
                   </section>
                 )}
 
-                {/* Plain-Language Step Navigation Controls */}
-                <footer className="stage-controls-footer">
-                  <button
-                    type="button"
-                    className="step-nav-btn prev"
-                    disabled={stage === 0}
-                    onClick={() => controller.goTo(stage - 1)}
-                  >
-                    ← Previous Stage
-                  </button>
-
-                  <span className="step-page-count">
-                    {stage + 1} of {result.flow.stages.length}
-                  </span>
-
-                  {stage < result.flow.stages.length - 1 ? (
-                    <button
-                      type="button"
-                      className="step-nav-btn next primary"
-                      onClick={() => controller.goTo(stage + 1)}
-                    >
-                      Next Stage →
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="step-nav-btn replay primary"
-                      onClick={() => controller.replay()}
-                    >
-                      Replay Walkthrough ↺
-                    </button>
-                  )}
-                </footer>
               </article>
             </SceneTransition>
           </div>

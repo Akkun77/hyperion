@@ -1,5 +1,5 @@
 // Presentation time only: never represents backend execution latency.
-export const DEMO_STAGE_DURATIONS = [6000, 6000, 6000, 9000, 9000, 8000, Infinity] as const
+export const DEMO_STAGE_DURATIONS = [10000, 10000, 10000, 12000, 12000, 12000, Infinity] as const
 export interface PlaybackClock {
   now: () => number
   setTimeout: (callback: () => void, milliseconds: number) => unknown
@@ -9,7 +9,6 @@ export interface PlaybackState {
   stage: number
   playing: boolean
   direction: 'forward' | 'backward'
-  speed: number
 }
 const browserClock: PlaybackClock = {
   now: () => performance.now(),
@@ -19,7 +18,7 @@ const browserClock: PlaybackClock = {
 
 /** One cancellable clock for the recorded result; it performs no network requests. */
 export class DemoPlayback {
-  state: PlaybackState = { stage: 0, playing: false, direction: 'forward', speed: 1 }
+  state: PlaybackState = { stage: 0, playing: false, direction: 'forward' }
   private count = 0
   private timer: unknown
   private generation = 0
@@ -32,7 +31,7 @@ export class DemoPlayback {
     return () => { this.listeners.delete(listener) }
   }
   private emit() { this.listeners.forEach(listener => listener({ ...this.state })) }
-  private duration() { return (DEMO_STAGE_DURATIONS[this.state.stage] ?? Infinity) / this.state.speed }
+  private duration() { return DEMO_STAGE_DURATIONS[this.state.stage] ?? Infinity }
   private cancel() {
     this.generation++
     if (this.timer !== undefined) this.clock.clearTimeout(this.timer)
@@ -52,7 +51,7 @@ export class DemoPlayback {
       this.emit()
     }, this.remaining)
   }
-  start(count: number, autoplay = true) {
+  start(count: number, autoplay = false) {
     this.cancel()
     this.count = count
     this.state = { ...this.state, stage: 0, playing: autoplay && count > 1, direction: 'forward' }
@@ -78,14 +77,6 @@ export class DemoPlayback {
     const next = Math.max(0, Math.min(this.count - 1, stage))
     this.state = { ...this.state, stage: next, playing: false, direction: next < this.state.stage ? 'backward' : 'forward' }
     this.remaining = this.duration()
-    this.emit()
-  }
-  setSpeed(speed: number) {
-    if (![0.75, 1, 1.5].includes(speed)) return
-    const remaining = this.state.playing ? Math.max(0, this.deadline - this.clock.now()) : this.remaining
-    this.remaining = remaining * this.state.speed / speed
-    this.state = { ...this.state, speed }
-    this.schedule()
     this.emit()
   }
   replay() { if (this.count) this.start(this.count) }
