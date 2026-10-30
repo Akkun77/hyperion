@@ -1,0 +1,8 @@
+/* Preserve approved hero type, colors and composition. Only prevent existing
+   lower-page desktop grids from expanding the mobile page horizontally. */
+@media(max-width:760px){
+  .product-site .preview-content-card,.product-site .story-stage-viewport{grid-template-columns:minmax(0,1fr);padding:20px;gap:24px}
+  .product-site .preview-content-card>*,.product-site .story-stage-viewport>*{min-width:0}
+  .product-site .preview-telemetry-box,.product-site .story-telemetry-panel{overflow-wrap:anywhere}
+  .product-site .telemetry-card-header{flex-wrap:wrap;gap:8px}
+}

@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>HYPERION recorded-result timing audit</title></head>
+<body><aside style="padding:16px"><strong>TEST HARNESS — recorded evidence fixture; no backend writes</strong>
+<p>Simulated response delay: 2 seconds. Fixture response count: <output id="response-count">0</output>. Every Replay must leave this count unchanged.</p>
+<p>Browser clock (ms): <output id="browser-clock">0</output>. Stage signal count: <output id="signal-count">0</output>.</p>
+<table aria-label="Browser clock observations"><thead><tr><th>Stage</th><th>Browser time (ms)</th><th>Previous stage duration (ms)</th></tr></thead><tbody id="timing-log"></tbody></table></aside>
+<main id="root"></main><script type="module" src="./demo-timing-browser.tsx"></script></body></html>

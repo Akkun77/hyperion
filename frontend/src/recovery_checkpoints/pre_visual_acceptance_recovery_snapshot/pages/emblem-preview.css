@@ -1,0 +1,20 @@
+.emblem-comparison{position:relative;z-index:1;max-width:1480px;margin:auto;padding:clamp(24px,4vw,64px);color:#e9efec}
+.emblem-comparison header{max-width:880px}
+.emblem-comparison header>a{display:inline-block;color:#99d6b7;margin-bottom:24px}
+.emblem-comparison .eyebrow{display:block;font-size:11px}
+.emblem-comparison h1{font-size:clamp(30px,4vw,52px);letter-spacing:-.04em;margin:14px 0}
+.emblem-comparison p{font-size:16px;line-height:1.7;color:#acbbb3}
+.emblem-preview-controls{display:flex;gap:10px;margin:20px 0 12px;flex-wrap:wrap}
+.emblem-preview-controls button{background:#101815;border:1px solid #43594b;border-radius:6px;padding:10px 18px}
+.emblem-preview-controls button[aria-pressed=true]{background:#183629;border-color:#73bf95}
+.emblem-comparison header small,.emblem-comparison footer{color:#9aafa2;line-height:1.7}
+.emblem-comparison-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:32px 0}
+.emblem-comparison article{min-width:0;border:1px solid #24352c;border-radius:12px;background:radial-gradient(ellipse at 50% 35%,#16201c,#090e0c 70%);padding:24px}
+.emblem-comparison h2{font-size:22px;margin-bottom:8px}
+.emblem-preview-surface{position:relative;aspect-ratio:1.2;min-width:0}
+.emblem-preview-surface canvas{display:block;width:100%;height:100%;position:absolute;inset:0;pointer-events:none}
+.emblem-preview-surface>p{position:absolute;inset:35% 15%;text-align:center}
+.emblem-small-review{display:flex;align-items:center;gap:18px;border-top:1px solid #24352c;padding-top:20px;color:#a7bcb0;font-size:13px}
+.emblem-preview-small{width:64px;height:64px;aspect-ratio:1;flex:none}
+.emblem-preview-small>p{font-size:10px;inset:0}
+@media(max-width:760px){.emblem-comparison-grid{grid-template-columns:1fr}.emblem-comparison article{padding:18px}.emblem-comparison p{font-size:15px}}

@@ -1,0 +1,1 @@
+HIP: AMD Radeon(TM) 780M Graphics

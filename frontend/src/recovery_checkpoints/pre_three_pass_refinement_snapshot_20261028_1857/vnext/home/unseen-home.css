@@ -1,0 +1,717 @@
+/* ==========================================================================
+   HYPERION — DEFINITIVE PRODUCT HOMEPAGE (FRACTURED VEIL + WATCH TRANSITION)
+   Monochromatic Architectural Design System
+   ========================================================================== */
+
+:root {
+  --unseen-void: #07080A;
+  --unseen-carbon: #121418;
+  --unseen-graphite: #2A2E36;
+  --unseen-silver: #A8B2C0;
+  --unseen-pearl: #E8EDF2;
+  --unseen-white: #FFFFFF;
+  --unseen-muted: #747C8A;
+
+  --unseen-allow: #53CE9A;
+  --unseen-flag: #E9B969;
+  --unseen-block: #EB7777;
+
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   Base Container & Global Layout
+   ========================================================================== */
+.hyperion-homepage-root {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--unseen-void);
+  color: var(--unseen-pearl);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.hyperion-homepage-root *,
+.hyperion-homepage-root *::before,
+.hyperion-homepage-root *::after {
+  box-sizing: border-box;
+}
+
+.hyperion-homepage-root .mono {
+  font-family: var(--font-mono);
+}
+
+.hyperion-homepage-root .bold {
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Top Navigation Header
+   Fixed obsidian frosted bar, non-overlapping, strictly responsive
+   ========================================================================== */
+.hp-nav-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 3rem;
+  background: rgba(7, 8, 10, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(191, 195, 199, 0.1);
+}
+
+.hp-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.hp-brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-decoration: none;
+  color: var(--unseen-pearl);
+  transition: opacity 0.2s ease;
+}
+
+.hp-brand-link:hover {
+  opacity: 0.85;
+}
+
+.hp-brand-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--unseen-silver);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  background: rgba(21, 23, 27, 0.9);
+  border-radius: 4px;
+  color: var(--unseen-white);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.1);
+}
+
+.hp-brand-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.hp-brand-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--unseen-white);
+  line-height: 1.1;
+}
+
+.hp-brand-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  color: var(--unseen-muted);
+  text-transform: uppercase;
+}
+
+.hp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  background: rgba(18, 20, 24, 0.7);
+  border: 1px solid rgba(191, 195, 199, 0.15);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--unseen-silver);
+}
+
+.hp-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--unseen-muted);
+}
+
+.hp-status-dot.online {
+  background-color: var(--unseen-allow);
+  box-shadow: 0 0 8px var(--unseen-allow);
+  animation: glowPulse 2.5s infinite;
+}
+
+.hp-status-dot.offline {
+  background-color: var(--unseen-flag);
+}
+
+.hp-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hp-nav-pill {
+  padding: 0.45rem 1.1rem;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--unseen-silver);
+  background: transparent;
+  border: 1px solid rgba(191, 195, 199, 0.2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.hp-nav-pill:hover {
+  color: var(--unseen-white);
+  border-color: var(--unseen-silver);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hp-nav-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.3rem;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--unseen-void);
+  background: var(--unseen-pearl);
+  border: 1px solid var(--unseen-pearl);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-cinematic);
+  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.12);
+}
+
+.hp-nav-button:hover {
+  background: var(--unseen-white);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(255, 255, 255, 0.25);
+}
+
+/* ==========================================================================
+   Fullscreen 3D WebGL Stage (The Fractured Veil)
+   Fixed background plane driven by scroll progress
+   ========================================================================== */
+.hp-hero-particle-stage {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.unseen-canvas-container {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.unseen-canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.unseen-canvas-fallback {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 65% 50%, #15181E 0%, #07080A 80%);
+}
+
+/* ==========================================================================
+   Hero Section: First Screen
+   Minimal, disciplined, left-aligned typography framing the sculpture
+   ========================================================================== */
+.hp-hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 0 4rem;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.hp-hero-content-wrap {
+  position: relative;
+  max-width: 620px;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+
+.hp-hero-text-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.hp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  color: var(--unseen-silver);
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.hp-eyebrow-pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--unseen-pearl);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+.hp-hero-heading {
+  font-family: var(--font-display);
+  font-size: clamp(3.2rem, 5.6vw, 4.8rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  margin: 0 0 1.5rem 0;
+  color: var(--unseen-pearl);
+  text-transform: uppercase;
+}
+
+.heading-line {
+  display: block;
+}
+
+.heading-line.accent-pearl {
+  color: var(--unseen-white);
+  text-shadow: 0 0 35px rgba(255, 255, 255, 0.22);
+}
+
+.hp-hero-subtitle {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: var(--unseen-silver);
+  max-width: 540px;
+  margin: 0 0 2.5rem 0;
+  text-shadow: 0 1px 8px rgba(7, 8, 10, 0.85);
+}
+
+.hp-hero-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.hp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.95rem 2.2rem;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  color: var(--unseen-void);
+  background: var(--unseen-pearl);
+  border: 1px solid var(--unseen-pearl);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.25s var(--ease-cinematic);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.14);
+}
+
+.hp-btn-primary:hover {
+  background: var(--unseen-white);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.28);
+}
+
+.hp-btn-primary.large {
+  padding: 1.15rem 2.6rem;
+  font-size: 1.02rem;
+}
+
+.hp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.95rem 2.2rem;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  color: var(--unseen-pearl);
+  background: rgba(21, 23, 27, 0.75);
+  border: 1px solid rgba(191, 195, 199, 0.35);
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s var(--ease-cinematic);
+}
+
+.hp-btn-secondary:hover {
+  background: rgba(52, 56, 62, 0.5);
+  border-color: var(--unseen-silver);
+  color: var(--unseen-white);
+  transform: translateY(-2px);
+}
+
+.hp-btn-secondary.large {
+  padding: 1.15rem 2.6rem;
+  font-size: 1.02rem;
+}
+
+.arrow-glyph {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.hp-btn-primary:hover .arrow-glyph,
+.hp-btn-secondary:hover .arrow-glyph {
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   Spatial Context Annotations (Anchored to 3D Sculpture)
+   ========================================================================== */
+.hp-spatial-context-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hp-spatial-callout {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: fadeInCallout 0.4s var(--ease-cinematic) both;
+}
+
+.callout-ingress {
+  left: 14%;
+  top: 68%;
+}
+
+.callout-inspection {
+  right: 28%;
+  top: 48%;
+}
+
+.callout-evidence {
+  right: 18%;
+  bottom: 22%;
+}
+
+.callout-line {
+  width: 32px;
+  height: 1px;
+  background: rgba(174, 184, 192, 0.4);
+}
+
+.callout-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.callout-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--unseen-white);
+}
+
+.callout-desc {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--unseen-silver);
+  letter-spacing: 0.06em;
+}
+
+@keyframes fadeInCallout {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hp-hero-monolith-mark {
+  display: none;
+}
+
+/* ==========================================================================
+   Scroll Track Driver
+   Allows camera to glide along aperture curve
+   ========================================================================== */
+.hp-scroll-track {
+  position: relative;
+  width: 100%;
+  height: 120vh;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Bottom Transition Section: Introduces Watch Experience
+   Full-screen cinematic entry composition
+   ========================================================================== */
+.hp-bottom-transition-section {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rem 2rem 5rem;
+  z-index: 2;
+  transition: opacity 0.35s ease;
+}
+
+.hp-transition-card {
+  max-width: 840px;
+  width: 100%;
+  text-align: center;
+  background: rgba(14, 16, 20, 0.78);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(191, 195, 199, 0.18);
+  border-radius: 24px;
+  padding: 4.5rem 3.5rem;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.75);
+}
+
+.transition-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: var(--unseen-silver);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+
+.transition-pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--unseen-allow);
+  box-shadow: 0 0 8px var(--unseen-allow);
+}
+
+.hp-transition-heading {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 4.8vw, 3.8rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--unseen-white);
+  margin: 0 0 1.25rem 0;
+  text-transform: uppercase;
+  text-shadow: 0 0 35px rgba(255, 255, 255, 0.25);
+}
+
+.hp-transition-subtitle {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: var(--unseen-silver);
+  max-width: 580px;
+  margin: 0 auto 2.75rem auto;
+}
+
+.hp-transition-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.hp-transition-back-row {
+  display: flex;
+  justify-content: center;
+}
+
+.hp-btn-back-to-top {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.14em;
+  color: var(--unseen-muted);
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  transition: color 0.2s ease;
+}
+
+.hp-btn-back-to-top:hover {
+  color: var(--unseen-pearl);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ==========================================================================
+   Strict Responsive Adaptations & Mobile Collision Safeguards
+   ========================================================================== */
+@media (max-width: 768px) {
+  .hp-nav-header {
+    padding: 0 1rem;
+    height: 56px;
+  }
+
+  .hp-brand-symbol {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.88rem;
+  }
+
+  .hp-brand-title {
+    font-size: 0.92rem;
+    letter-spacing: 0.15em;
+  }
+
+  .hp-brand-subtitle {
+    display: none;
+  }
+
+  .hp-status-badge {
+    display: none;
+  }
+
+  .hp-nav-pill {
+    display: none;
+  }
+
+  .hp-nav-button {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  /* Guaranteed safe spacing below header */
+  .hp-hero-section {
+    padding: calc(56px + 2.5rem) 1.5rem 2.5rem;
+    min-height: 100vh;
+    align-items: flex-start;
+  }
+
+  .hp-hero-content-wrap {
+    max-width: 100%;
+  }
+
+  .hp-hero-heading {
+    font-size: clamp(2.0rem, 7.5vw, 2.9rem);
+    line-height: 1.08;
+    margin-bottom: 1rem;
+  }
+
+  .hp-hero-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin-bottom: 1.75rem;
+  }
+
+  .hp-hero-cta-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .hp-btn-primary,
+  .hp-btn-secondary,
+  .hp-btn-primary.large,
+  .hp-btn-secondary.large {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem 1.5rem;
+    font-size: 0.88rem;
+  }
+
+  .hp-transition-card {
+    padding: 2.75rem 1.5rem;
+    border-radius: 16px;
+  }
+
+  .hp-transition-heading {
+    font-size: clamp(1.8rem, 6.5vw, 2.5rem);
+  }
+
+  .hp-transition-subtitle {
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+  }
+
+  .hp-transition-cta-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hp-nav-header {
+    padding: 0 0.75rem;
+  }
+
+  .hp-brand-title {
+    font-size: 0.88rem;
+    letter-spacing: 0.12em;
+  }
+
+  .hp-nav-button {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.70rem;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Accessibility
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .hp-status-dot.online {
+    animation: none;
+  }
+
+  .hp-btn-primary,
+  .hp-btn-secondary {
+    transition: none !important;
+    transform: none !important;
+  }
+}

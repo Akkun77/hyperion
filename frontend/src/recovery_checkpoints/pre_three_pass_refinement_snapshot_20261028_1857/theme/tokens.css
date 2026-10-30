@@ -1,0 +1,73 @@
+/* ==========================================================================
+   HYPERION — UNIFIED DESIGN SYSTEM TOKENS
+   Base Palette:
+     Background:     #07080A
+     Deep surface:   #111418
+     Raised surface: #1B2025
+     Graphite:       #333A41
+     Muted silver:   #AEB8C0
+     Primary text:   #F3F4F1
+   Semantic Accents (Operational states & verdicts only):
+     ALLOW:          #62D4A1
+     FLAG:           #E9BA6A
+     BLOCK:          #EA777C
+   ========================================================================== */
+
+:root {
+  /* Exact Specified Core Tokens */
+  --bg-void: #07080A;
+  --void: #07080A;
+  --surface-deep: #111418;
+  --canvas: #111418;
+  --surface-raised: #1B2025;
+  --surface: #1B2025;
+  --graphite: #333A41;
+  --steel: #333A41;
+  --silver-muted: #AEB8C0;
+  --silver: #AEB8C0;
+  --muted: #828B94;
+  --text-primary: #F3F4F1;
+  --pearl: #F3F4F1;
+  --text-secondary: #AEB8C0;
+  --text-muted: #828B94;
+
+  /* Semantic Colors (Operational states only) */
+  --allow: #62D4A1;
+  --allow-glow: rgba(98, 212, 161, 0.28);
+  --flag: #E9BA6A;
+  --flag-glow: rgba(233, 186, 106, 0.28);
+  --block: #EA777C;
+  --block-glow: rgba(234, 119, 124, 0.28);
+
+  /* Translucent Surface & Glass Tokens */
+  --glass-surface: rgba(17, 20, 24, 0.72);
+  --glass-surface-raised: rgba(27, 32, 37, 0.78);
+  --glass-border: rgba(174, 184, 192, 0.14);
+  --glass-border-focus: rgba(243, 244, 241, 0.32);
+
+  /* Typography */
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'SF Mono', 'JetBrains Mono', monospace;
+
+  /* Motion Curves */
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Compatibility & Legacy Aliases */
+  --hp-void: var(--void);
+  --hp-surface: var(--surface-deep);
+  --hp-card: var(--surface-raised);
+  --hp-ink: var(--text-primary);
+  --hp-muted: var(--text-muted);
+  --hp-line: var(--graphite);
+  --hp-lime: var(--silver);
+  --hp-cyan: var(--text-primary);
+  --hp-allow: var(--allow);
+  --hp-flag: var(--flag);
+  --hp-block: var(--block);
+  --accent: var(--silver);
+  --accent-bright: var(--text-primary);
+  --border-subtle: rgba(174, 184, 192, 0.15);
+  --line: var(--graphite);
+}

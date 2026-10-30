@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HYPERION Favicon Browser Tab Verification</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background: #0D1117;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #E6EDF3;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 30px;
+    }
+    .comparison-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      max-width: 900px;
+    }
+    .tab-case {
+      border-radius: 8px;
+      padding: 24px;
+    }
+    .dark-case {
+      background: #161B22;
+      border: 1px solid #30363D;
+    }
+    .light-case {
+      background: #E8ECEF;
+      border: 1px solid #D0D7DE;
+      color: #1F2328;
+    }
+    .label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+    .tab-bar-mock {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 6px;
+    }
+    .dark-mock {
+      background: #202428;
+    }
+    .light-mock {
+      background: #DEE1E6;
+    }
+    .mock-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 14px;
+      border-radius: 6px 6px 0 0;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .dark-tab {
+      background: #2D333B;
+      color: #F0F6FC;
+    }
+    .light-tab {
+      background: #FFFFFF;
+      color: #1F2328;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .tab-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+    .assets-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+      align-items: center;
+    }
+    .asset-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>HYPERION — Official Favicon & Browser Tab Visual Acceptance</h1>
+
+  <div class="comparison-grid">
+    <!-- Dark Mode Browser Tab -->
+    <div class="tab-case dark-case">
+      <div class="label" style="color: #58A6FF;">1. Dark Mode Browser Tab (macOS / Chrome / Windows Dark)</div>
+      <div class="tab-bar-mock dark-mock">
+        <div class="mock-tab dark-tab">
+          <img src="/hyperion.svg" class="tab-icon" alt="Hyperion Favicon">
+          <span>Hyperion AI Security Gateway</span>
+        </div>
+      </div>
+      <div class="assets-row">
+        <div class="asset-item">
+          <img src="/hyperion.svg" width="64" height="64" alt="SVG 64x64">
+          <span>hyperion.svg (64x64)</span>
+        </div>
+        <div class="asset-item">
+          <img src="/favicon-32x32.png" width="32" height="32" alt="PNG 32x32">
+          <span>favicon-32x32.png</span>
+        </div>
+        <div class="asset-item">
+          <img src="/favicon-16x16.png" width="16" height="16" alt="PNG 16x16">
+          <span>favicon-16x16.png</span>
+        </div>
+        <div class="asset-item">
+          <img src="/apple-touch-icon.png" width="64" height="64" alt="Apple Touch 180">
+          <span>apple-touch-icon.png</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Light Mode Browser Tab -->
+    <div class="tab-case light-case">
+      <div class="label" style="color: #0969DA;">2. Light Mode Browser Tab (Standard Windows Chrome / Safari Light)</div>
+      <div class="tab-bar-mock light-mock">
+        <div class="mock-tab light-tab">
+          <img src="/hyperion.svg" class="tab-icon" alt="Hyperion Favicon">
+          <span>Hyperion AI Security Gateway</span>
+        </div>
+      </div>
+      <div class="assets-row" style="color: #57606A;">
+        <div class="asset-item">
+          <img src="/hyperion.svg" width="64" height="64" alt="SVG 64x64">
+          <span>hyperion.svg</span>
+        </div>
+        <div class="asset-item">
+          <img src="/favicon-32x32.png" width="32" height="32" alt="PNG 32x32">
+          <span>favicon-32x32.png</span>
+        </div>
+        <div class="asset-item">
+          <img src="/favicon-16x16.png" width="16" height="16" alt="PNG 16x16">
+          <span>favicon-16x16.png</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

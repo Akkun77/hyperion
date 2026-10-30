@@ -1,0 +1,24 @@
+{
+  "asset": "inspection_array",
+  "version": "1.0-static",
+  "author": "HYPERION original asset, authored with Blender Python",
+  "license": "Project-owned original geometry and materials",
+  "source": "source/inspection_array.blend",
+  "build_script": "source/build_inspection_array.py",
+  "runtime_glb": "../../../frontend/public/hyperion-2/models/inspection_array.glb",
+  "world_units": "meters",
+  "coordinate_system": "GLB Y-up, +Z toward arrival camera",
+  "geometry": {
+    "fin_bodies": 24,
+    "meshes": 141,
+    "triangles": 21052,
+    "named_pivots": ["Pivot_Gate_Left | outward slide", "Pivot_Gate_Right | outward slide", "Pivot_Probe | travel along Z", "Pivot_Debris | deterministic contact"]
+  },
+  "materials": 7,
+  "cameras": 4,
+  "glb_bytes": 1502788,
+  "rendering": "Blender 5.2.3 Cycles, 64 samples, HIP / AMD Radeon 780M",
+  "review_stills": ["reviews/inspection_desktop_1440x900.png", "reviews/inspection_mobile_390x844.png"],
+  "frontend_posters": ["../../../frontend/public/hyperion-2/posters/inspection-desktop.png", "../../../frontend/public/hyperion-2/posters/inspection-mobile.png"],
+  "status": "Static model and stills exported; motion tracks and runtime GLB scene integration pending"
+}

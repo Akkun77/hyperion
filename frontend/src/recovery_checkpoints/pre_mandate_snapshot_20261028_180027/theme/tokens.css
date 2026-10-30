@@ -1,0 +1,72 @@
+/* ==========================================================================
+   HYPERION — MONOCHROMATIC ARCHITECTURAL DESIGN SYSTEM
+   Palette: MONOCHROME (VOID / CANVAS / CARBON / STEEL / SILVER / PEARL / MUTED)
+   Semantics: ALLOW / FLAG / BLOCK
+   ========================================================================== */
+
+:root {
+  /* Exact Core Authority Tokens */
+  --void: #07080A;
+  --canvas: #0D0F12;
+  --carbon: #15171B;
+  --steel: #34383E;
+  --silver: #BFC3C7;
+  --pearl: #F4F4F1;
+  --muted: #9DA3AB;
+
+  /* Semantic Colors (Operational states only) */
+  --allow: #53CE9A;
+  --flag: #E9B969;
+  --block: #EB7777;
+
+  /* Structural Surface Mapping */
+  --surface: var(--carbon);
+  --surface-raised: #1C2026;
+  --surface-elevated: #242932;
+  --line: var(--steel);
+  --text-primary: var(--pearl);
+  --text-secondary: var(--silver);
+  --text-muted: var(--muted);
+
+  /* Focus & Instrument Accents — Pure Silver/Pearl Monochrome */
+  --accent: var(--silver);
+  --accent-bright: var(--pearl);
+  --border-focus: var(--silver);
+
+  /* Semantic Interface Aliases */
+  --bg-void: var(--void);
+  --bg-canvas: var(--canvas);
+  --bg-surface: var(--carbon);
+  --bg-raised: var(--surface-raised);
+  --border-subtle: var(--steel);
+
+  /* Typography */
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'SF Mono', monospace;
+
+  /* Legacy Architectural Token Aliases (mapped strictly to monochrome) */
+  --hp-void: var(--void);
+  --hp-surface: var(--carbon);
+  --hp-card: var(--surface-raised);
+  --hp-ink: var(--pearl);
+  --hp-muted: var(--muted);
+  --hp-line: var(--steel);
+  --hp-lime: var(--silver);
+  --hp-cyan: var(--pearl);
+  --hp-allow: var(--allow);
+  --hp-flag: var(--flag);
+  --hp-block: var(--block);
+
+  --signal-lime: var(--silver);
+  --signal-cyan: var(--pearl);
+  --sg-lime: var(--silver);
+  --sg-cyan: var(--pearl);
+  --sg-card: var(--carbon);
+  --sg-border: var(--steel);
+  --sg-text: var(--pearl);
+  --sg-muted: var(--muted);
+  --sg-active: var(--surface-raised);
+
+  --green: var(--allow);
+}
