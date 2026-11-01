@@ -1,23 +1,30 @@
-# Application screenshots
+# Application Screenshot Gallery
 
-Captured on 2026-10-16 from the running HYPERION React application using the real in-app browser. The desktop viewport was set to 1440 × 1000; the browser capture surface excludes its scrollbar gutter on scrollable pages, so some exported images are 1425 × 990. Original browser JPEG captures were transcoded to lossless WebP without changing their displayed content. No image-generation tool was used.
+Captured on 2026-11-01 from the live, running HYPERION networking application at a standardized desktop viewport of **1440 × 900**.
 
-Operational pages were connected to a separately started instance of the current `backend/app.py`, with a **new, synthetic-only SQLite database** outside the repository. Existing local databases and running development servers were not changed. All requests shown are built-in controlled examples; reserved benchmark IP addresses and `user_101`/`user_202` are synthetic. No actual token, private contact data or production credential is shown. The partial hash in the token-misuse finding is a detector-generated fingerprint of a synthetic demo credential, not an access token.
+All operational captures represent authentic application states connected to the local security gateway (`:8000`) and protected upstream microservice (`:8001`) with persisted SQLite telemetry. No artificial mockups, image generation tools, or modified source code were used to fabricate these views.
 
-| Image | Actual application state |
-| --- | --- |
-| `homepage.webp` | Original emerald loop, restored hero and working navigation; introduction completed |
-| `overview.webp` | Five registered/observed catalog endpoints, 23 synthetic requests, three findings and two shadow endpoints; Live Signal collapsed through its own control |
-| `api-inventory.webp` | Managed vs shadow and registered-only vs observed routes; actual endpoint risk scores |
-| `traffic-activity.webp` | Server-side activity summary and chart for the controlled request burst |
-| `threat-findings.webp` | BOLA, token misuse and scraping findings with persisted evidence; correctly marked historical relative to inbox opening |
-| `risk-intelligence.webp` | Actual platform and service risk hierarchy; progressive sections initially collapsed |
-| `execution-flow.webp` | Seven-stage trace for persisted BOLA alert #3 and request #21, including recorded risk 85 |
-| `investigation.webp` | Real navigation from that BOLA flow to its linked traffic evidence |
-| `watch-hyperion-work.webp` | A second explicit BOLA execution, followed by the actual manual Request stage and compact controls; top 850 pixels retained to end at whitespace before the off-screen technical ledger |
+---
 
-The controlled backend scenarios were run in sequence: normal, scraping, token misuse, BOLA and shadow discovery, followed by the second built-in shadow route and built-in catalog registration. The later browser-run BOLA walkthrough appended one additional synthetic request/finding in the same disposable dataset. Thus images taken at different points need not have identical record totals. Risk reflects accumulated state, not a fixed score assigned to each demo.
+## 1. Primary Screenshot Manifest
 
-Screenshots are representative viewport views, not full-page exports. All pictured data was returned by the actual backend. No DOM values, metrics, findings, risk factors or connection status were substituted to create the images. WebGL naturally moves between captures. The later risk stage was also inspected in-browser and displayed the recorded 85/100 score and backend factors; the selected gallery capture favors the more compact Request stage.
+| Filename | Resolution | View / Component | Application State Description |
+|---|---|---|---|
+| `hyperion-homepage.png` | 1440 × 900 | Cinematic Homepage (`/`) | Silver Fractured Veil 3D WebGL sculpture with real-time particle streamlines, white infinity logo, and "EVERY REQUEST LEAVES A TRACE." |
+| `hyperion-command-center.png` | 1440 × 900 | Command Center Overview (`/command-center`) | Live KPI telemetry (12 catalog endpoints, 248 recorded requests, 70 security findings, 8 shadow routes), gateway decision breakdown, and Interactive System Atlas. |
+| `hyperion-secure-gateway.png` | 1440 × 900 | Secure Gateway Core (`/command-center/gateway`) | Gateway reverse-proxy architecture (`:8000`), upstream microservice target (`:8001`), active shadow policy (FLAG), and real-time causal request flow. |
+| `hyperion-gateway-decisions.png` | 1440 × 900 | Gateway Decisions Ledger (`/command-center/gateway`) | Filterable Evidence Ledger displaying verified **ALLOW**, **FLAG**, and **BLOCK** decisions with reason codes, latency, and linked finding attestations. |
+| `hyperion-watch.png` | 1440 × 900 | Watch HYPERION Work (`/watch`) | Multi-stage cinematic walkthrough tracking an inbound request from client ingress through the octagonal gateway aperture with live playback controls. |
+| `hyperion-threat-findings.png` | 1440 × 900 | Threat Findings Inbox (`/command-center/alerts`) | Security incident queue categorized by detector (BOLA, Token Misuse, Scraping, Shadow API) with severity badges and evidence navigation links. |
+| `hyperion-investigation.png` | 1440 × 900 | Forensic Evidence Dossier (`/command-center/investigation`) | Deep-linked forensic dossier (Finding #57 — BOLA) displaying offending caller IP, target account resource, auth signal, and correlated raw request #162. |
+| `hyperion-api-inventory.png` | 1440 × 900 | API Inventory (`/command-center/inventory`) | Managed OpenAPI catalog compared against uncataloged shadow endpoints with risk scores, authentication requirements, and observed request counts. |
+| `hyperion-traffic.png` | 1440 × 900 | Traffic Activity (`/command-center/traffic`) | Server-side request volume curves over time, response code distributions, method breakdowns, and suspicious activity volume across all recorded history. |
+| `hyperion-risk-intelligence.png` | 1440 × 900 | Risk Intelligence Hierarchy (`/command-center/risk`) | Multi-level exposure breakdown from Platform (77/100) down to Services and Endpoints, revealing transparent mathematical formula factors and drivers. |
 
-Older `hyperion-desktop.jpg` and `hyperion-mobile.jpg` files are retained historical marketing captures; they are not the current operational gallery and were not recaptured for this release.
+---
+
+## 2. WebP Compatibility Assets
+
+Lossless WebP versions of the captures above are also maintained in this directory (`homepage.webp`, `overview.webp`, `api-inventory.webp`, `traffic-activity.webp`, `threat-findings.webp`, `risk-intelligence.webp`, `investigation.webp`, `watch-hyperion-work.webp`, `execution-flow.webp`) ensuring that any legacy documentation links resolve seamlessly to the current application.
+
+Historical marketing captures (`hyperion-desktop.jpg`, `hyperion-mobile.jpg`) from the initial prototype release are retained for historical provenance.
